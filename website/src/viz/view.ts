@@ -65,10 +65,13 @@ export class ModelView {
 
   /** Fetch a model and build its sheets. Only the fields in `want` are
    *  fetched now (a stress is megabytes nobody may ask for); `need` gets
-   *  another later. */
-  async load(key: string, want: string[] = ["u", "slip"]): Promise<Model> {
+   *  another later. `only` names the sheets to build, for a scene that
+   *  shows fewer than the model has. */
+  async load(key: string, want: string[] = ["u", "slip"],
+             only?: string[]): Promise<Model> {
     const m = await this.payload.model(key);
-    const names = Object.keys(m.sheets);
+    const names = Object.keys(m.sheets)
+      .filter((n) => !only || only.includes(n));
     const parts = await Promise.all(names.map(async (name) => {
       const sh = m.sheets[name];
       const fields = Object.keys(sh.fields).filter((f) => want.includes(f));
@@ -140,7 +143,8 @@ export class ModelView {
    *  sheets share one colour bar. */
   private limit(field: string, q: string, key: string): number {
     let hi = 0;
-    for (const sh of Object.values(this.model.sheets)) {
+    for (const l of this.loaded) {
+      const sh = this.model.sheets[l.name];
       hi = Math.max(hi, sh.fields[field]?.range[q]?.[key] ?? 0);
     }
     return hi || 1;

@@ -15,11 +15,20 @@ export async function startHero(el: HTMLElement, baseUrl: string) {
   const scene = new SheetScene(el);
   const view = new ModelView(scene, payload);
   const choice: Choice = { quantity: "since", scalar: "z" };
+  const readout = document.createElement("div");
+  readout.className = "clock";
+  readout.textContent = "loading the model\u2026";
+  el.append(readout);
   try {
     await payload.load();
-    await view.load(payload.manifest.models[0].key);
+    const first = payload.manifest.models[0];
+    const m = await payload.model(first.key);
+    // In a block diagram the base of the plate is edge-on in the cut and
+    // hidden everywhere else: not worth its megabyte here.
+    await view.load(first.key, ["u"],
+                    "section" in m.sheets ? ["top", "section"] : undefined);
   } catch {
-    el.textContent = "The model data is not available in this build.";
+    readout.textContent = "The model data is not available in this build.";
     return;
   }
   scene.start();
@@ -31,9 +40,6 @@ export async function startHero(el: HTMLElement, baseUrl: string) {
       if (name !== "section") view.sheet(name)!.setClip([0, 1, 0], 0);
     }
   }
-  const readout = document.createElement("div");
-  readout.className = "clock";
-  el.append(readout);
 
   const q = view.quantity(choice);
   const top = q.at.length - 1;
