@@ -1,0 +1,1 @@
+{"schema":1,"models":[{"key":"megathrust","label":"megathrust","file":"megathrust.json"},{"key":"afterslip","label":"megathrust, lower reach creeping","file":"afterslip.json"},{"key":"slab","label":"megathrust on a subducting slab","file":"slab.json"}]}

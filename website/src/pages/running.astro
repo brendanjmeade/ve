@@ -1,0 +1,44 @@
+---
+import Base from "../layouts/Base.astro";
+import About from "../components/About.astro";
+import Running from "../content/running.mdx";
+
+const sections = [
+  { id: "the-three-models", label: "The three models" },
+  { id: "from-a-run-to-a-time", label: "From a run to a time" },
+  { id: "from-a-run-to-this-page", label: "From a run to this page" },
+  { id: "checked-not-trusted", label: "Checked, not trusted" },
+];
+---
+<Base
+  title="ve — Running"
+  description="The commands that made each model on this site, how a stored Laplace run becomes a time, and how the site's data is made from it."
+  current="running"
+>
+  <Fragment slot="sidebar">
+    <h1>Running<span class="sub">how these models were made</span></h1>
+    <nav class="toc" aria-label="Contents">
+      <h3>Contents</h3>
+      <ol>
+        {sections.map((s) => <li><a href={`#${s.id}`}>{s.label}</a></li>)}
+      </ol>
+    </nav>
+    <hr />
+    <About />
+  </Fragment>
+
+  <Running />
+
+  <style is:global>
+    .main pre {
+      background: var(--box-bg); border: 1px solid var(--rule);
+      padding: 12px 14px; overflow-x: auto; font-size: 12.5px;
+      line-height: 1.45; margin: 16px 0;
+    }
+    .main code { font-family: var(--mono); font-size: 0.92em; }
+    .main :not(pre) > code {
+      background: var(--box-bg); border: 1px solid var(--rule);
+      padding: 0 3px; border-radius: 2px;
+    }
+  </style>
+</Base>

@@ -1,0 +1,117 @@
+## The three models
+
+Every model on this site is one study of [mbem](https://github.com/brendanjmeade/mbem),
+run from one config with different options. A study is a folder of runs; a
+run holds its own spec, its meshes and the boundary solution of every Laplace
+state. Nothing here was tuned by hand afterwards.
+
+The megathrust, as a pair of meshes so that the profile can show the
+two-mesh limit:
+
+```bash
+python -m mbem run configs/plate_substrate.py \
+    --set dip=20 --set rake=90 --set depth=45 \
+    --set rho_plate=2700 --set rho_substrate=3300 \
+    --set edge_near=10 --set near_field_radius=200 \
+    --set fault_half_len=150 --set half_x=400 --set sides=window \
+    --set t_max=100 --sweep refine=1,2
+```
+
+Its lower reach creeping, against the same reach held, on the dense solver
+(a solved fault needs it):
+
+```bash
+python -m mbem run configs/plate_substrate.py \
+    --set dip=20 --set rake=90 --set depth=45 \
+    --set rho_plate=2700 --set rho_substrate=3300 \
+    --set edge_near=15 --set edge_interface=22.5 --set eps_substrate=2.25 \
+    --set near_field_radius=120 --set sides=window --set half_x=300 \
+    --set depth_box=200 --set fault_half_len=100 --set t_max=100 \
+    --set backend=dense --set lower=creep \
+    --sweep creep_tau=1,1e6 --sweep refine=1,1.5
+```
+
+The plate subducting as a slab, against no slab, with one density for plate
+and mantle:
+
+```bash
+python -m mbem run configs/plate_substrate.py \
+    --set dip=20 --set rake=90 --set depth=30 \
+    --set rho_plate=3300 --set rho_substrate=3300 \
+    --set edge_near=10 --set near_field_radius=150 --set sides=window \
+    --set half_x=500 --set depth_box=300 --set fault_half_len=100 \
+    --set t_max=100 --sweep slab_depth=0,150
+```
+
+The finer megathrust is the large one: 219,315 unknowns, fourteen states,
+39 minutes on a 48-core machine with the block-compressed operator. The
+others are smaller.
+
+<div class="note">
+These options (<code>sides=window</code>, <code>lower=creep</code>,
+<code>slab_depth</code>) are in mbem pull request #2 at the time of writing.
+Until it is merged they are on the branch, not on <code>main</code>.
+</div>
+
+## From a run to a time
+
+A Laplace run stores `fields_elastic.npz` and `fields_s01.npz` onwards: the
+solved boundary values of each state, on the meshes in `meshes.npz`. Time is
+a linear map of that stack, and reading a surface displacement at any time in
+the window takes three lines:
+
+```python
+import numpy as np
+from mbem import laplace
+
+s, stack = laplace.run_stack(run_dir)             # elastic state first
+u = np.tensordot(laplace.Prony(s).weights([1.0, 10.0, 100.0]),
+                 stack["u:top"], axes=1)          # (3 times, elements, 3)
+```
+
+`rate_weights` gives the velocity, and `locked_rate_weights(t, T)` the
+velocity of the fault locked between earthquakes that repeat every `T`.
+[Concepts](../concepts/) says what each of these is.
+
+## From a run to this page
+
+```bash
+python website/scripts/make_payload.py --runs ~/mbem/runs
+```
+
+reads the three studies and writes `website/public/data/`: 7.5 MB, fetched a
+model at a time. For each surface it writes a mesh and, for each field on it,
+
+- **modes**: an orthonormal basis of the fourteen solutions, float32, with
+  the ones below 10<sup>&minus;7</sup> of the largest dropped (ten to twelve
+  remain); and
+- **tables**: for every quantity of time, the weights already applied, one
+  row of ten to twelve numbers per time.
+
+The browser multiplies one row into the modes. The rounding that would have
+been multiplied by 200 never happens, and the Laplace inversion is stated in
+one place, in Python. Each field records how far its decode is from the map
+it stands for: at most 3&times;10<sup>&minus;3</sup> of the peak, on the
+megathrust's velocity, and ten times less on displacement.
+
+The surface is drawn through its elements' values averaged to the mesh nodes.
+A node on the fault is split in two, one per side, so the slip is never
+averaged away.
+
+## Checked, not trusted
+
+The models are held to references that share nothing with the boundary
+elements, in gates that run with the rest of mbem's:
+
+- `verify_viscoelastic` (168 checks): a dislocation and an Eshelby inclusion
+  in Maxwell and Burgers bodies against closed forms; the layered reference
+  in three dimensions against three independent solutions; the megathrust in
+  a window against it; a creeping penny crack against an exact solution.
+- `verify_volume`: the modes and tables this page uses reproduce the Python
+  map; quantising each state instead is shown losing twice the signal; the
+  node averaging keeps a jump across a fault.
+- `verify_config`: a run read back from its folder is the model that was
+  solved, state by state, wall data included.
+
+What the gates do not cover is said on the [Examples](../examples/) page
+beside each model, and in [Concepts](../concepts/) under each heading.

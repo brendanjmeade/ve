@@ -1,0 +1,193 @@
+## A relaxing Earth is an elastic one, many times
+
+An earthquake is fast and the Earth's response to it is slow. The elastic
+plate that broke rests on rock that flows, and for decades afterwards the
+stress the earthquake put into that rock relaxes, loading the plate again as
+it goes. The standard ways to compute this put a mesh through the volume, or
+assume flat layers.
+
+Neither is needed if the rheology is linear. Take the Laplace transform in
+time, $\hat f(s)=\int_0^\infty f(t)\,e^{-st}\,dt$. A linear viscoelastic
+material becomes an elastic one whose shear modulus depends on $s$; for a
+Maxwell material with relaxation time $\tau=\eta/\mu$,
+
+$$
+\tilde\mu(s)=\mu\,\frac{s}{s+1/\tau}.
+$$
+
+The bulk modulus stays elastic: rock flows in shear and does not flow in
+compression. If everything that is prescribed is switched on as a step, then
+$\tilde u(s)=s\,\hat u(s)$ is exactly the *elastic* solution of the same
+problem with $\tilde\mu(s)$ in place of $\mu$. Large $s$ is the instant of
+the earthquake, and small $s$ is long after:
+
+$$
+u(0^+)=\tilde u(\infty),\qquad u(\infty)=\tilde u(0).
+$$
+
+So nothing new has to be computed. The boundary element method that solves
+the elastic problem solves each of these, on the same boundary mesh, with
+only the moduli of the relaxing region changed. The substrate goes from an
+elastic solid to something close to a fluid as $s$ falls, and the method has
+to stay accurate all the way there, which costs one rule: a region that
+relaxes carries one mollification width on its whole closed boundary.
+
+## From fourteen solves to every time
+
+The models here are solved at real $s$, log-spaced at three points per
+decade across the times wanted and half a decade beyond each end. For times
+from 0.1 to 100 relaxation times that is thirteen values, and the elastic
+state makes fourteen.
+
+A relaxing body's response to a step is a constant and decaying exponentials,
+so the solutions are fitted with relaxation times fixed at the reciprocals of
+the sample points:
+
+$$
+\tilde u(s)=a_0+\sum_j a_j\,\frac{s}{s+1/\tau_j}
+\qquad\Longleftrightarrow\qquad
+u(t)=a_0+\sum_j a_j\,e^{-t/\tau_j}.
+$$
+
+The fit is linear and involves no solution values, so it is one small matrix,
+the same for every unknown and every point: a vector of fourteen weights for
+each time. A displacement at time $t$ is those weights times the fourteen
+solutions. The velocity is a second set of weights, from the derivative of
+the same exponentials.
+
+Two things follow that matter for reading this site.
+
+**The fit is trusted inside its window and nowhere else.** Nothing constrains
+it before the shortest relaxation time or after the longest. The clock on the
+[Examples](../examples/) page stops at 100 because the solves stop there.
+
+**The weights are large and of both signs.** They sum to about 200 in
+magnitude, 800 for a velocity, and cancel. A velocity at three points per
+decade carries about 1&nbsp;%. It is also why the page is not handed the
+fourteen solutions: rounding each one would be multiplied by the weights. It
+is handed a few orthonormal combinations of them, with the weights already
+applied in double precision.
+
+## The cycle of a locked fault
+
+Earthquakes on a fault repeat. If the same step recurs every $T$ for ever,
+the relaxation of all the past ones is a geometric series in each
+exponential, which costs nothing. The quantity geodesy measures between
+earthquakes is the velocity of the ground while the fault is locked. Measured
+from the same fault slipping steadily, and per unit slip rate, it is
+
+$$
+v(t)=T\sum_{n\ge0}\dot u(t+nT)\;-\;u(\infty),
+$$
+
+at time $t$ after the latest earthquake. Its mean over a cycle is minus the
+elastic response, whatever relaxes: the back-slip model of Savage (1983) is
+the average of the cycle, and relaxation only moves velocity between early
+and late in it. That is what the *locked fault* views show, for three
+recurrence intervals.
+
+## A box whose walls are a window
+
+There is no half-space in a boundary element method built on full-space
+kernels. The model is a box, and what its walls do is part of the model.
+
+For most problems a large box is enough. A fault that cuts the plate is not
+one of them. Once the substrate lets go, the two sides of a megathrust
+converge as rigid blocks, and it is the walls that stop them. Walls held
+fixed 800&nbsp;km away allow 0.81 of the convergence the unbounded problem
+has; from 400&nbsp;km, 0.61. Free walls let the plates go too far, 1.11.
+
+So the walls are made a *window*. Each wall carries the displacement that
+the model's own slip produces in an unbounded medium, a plate over a
+half-space, evaluated at every Laplace state. That reference is a wavenumber
+integral for a finite rectangular fault in three dimensions; it shares
+nothing with the boundary elements. With it, the horizontal motion of the
+megathrust is within 2 to 3&nbsp;% from a box only 400&nbsp;km to its walls,
+and the answer no longer depends on the box.
+
+A window is exact for what its reference solves and blind to everything
+else. The reference knows the prescribed slip in a layered half-space. It
+does not know a fault whose slip is solved, or a slab.
+
+## A plate that bends
+
+The elements are piecewise constant. For strike slip that is enough. Dip
+slip over a relaxed substrate bends the plate, and the vertical motion comes
+out short by an amount first order in the element size on the plate's two
+faces: 12&nbsp;% with 10&nbsp;km elements on a 30&nbsp;km plate, 6&nbsp;% at
+half that.
+
+A first-order error can be removed with two meshes. With the element sizes in
+a ratio $r$, coarse over fine,
+
+$$
+u_{\text{limit}}=\frac{r\,u_{\text{fine}}-u_{\text{coarse}}}{r-1}.
+$$
+
+This is the *two-mesh limit* in the megathrust's profile. The surface drawn
+in three dimensions is the finer mesh as it was solved, about 9&nbsp;% short
+in the vertical after the earthquake; the limit is within 3&nbsp;%. Window
+and limit together put the megathrust within 1.6&nbsp;% of the reference at
+1, 10 and 100 relaxation times, and within 0.5&nbsp;% through its cycle.
+
+## Gravity, on the boundary
+
+Gravity resists vertical motion once the substrate has relaxed: lifting the
+surface makes a load, and so does moving the base of the plate against the
+denser rock below. Both are tractions on boundaries. A face with normal
+$\mathbf n$ that has moved by $\mathbf u$ carries an extra traction
+
+$$
+\Delta\mathbf t=-\Delta\rho\,g\,(\mathbf u\cdot\hat{\mathbf z})\,\mathbf n,
+$$
+
+with $\Delta\rho$ the density of the rock on the free surface, and the
+contrast across it on an interface. Nothing enters the volume. It is exact
+for an incompressible material and off by about $\rho g L/K$ otherwise.
+
+## A fault that creeps
+
+A fault can be made to resist its slip *rate*: a thin shear zone with
+viscosity, dragging with a traction $\eta_f\,\dot{\mathbf b}$. In the Laplace
+domain that is a fault with a stiffness,
+
+$$
+\mathbf n\cdot\boldsymbol\sigma-\kappa(s)\,\mathbf b=\Delta\mathbf t,
+\qquad\kappa(s)=\eta_f\,s,
+$$
+
+so its slip is solved at each state like any other unknown, and afterslip
+needs no time-stepper either. At the instant of the earthquake the stiffness
+is infinite and the fault is locked; long afterwards it carries no traction.
+Rate-strengthening friction linearised about a steady rate is the same law.
+
+In the afterslip model the megathrust slips in the plate and its lower
+reach, from 30 to 45&nbsp;km, creeps. The afterslip averages 0.22 of the
+slip and is complete by about ten relaxation times. It is an early signal:
+at one relaxation time the surface differs from the model without it by a
+third, and by a hundred the two cannot be told apart. A solved fault runs on
+the dense solver only, so that model's mesh is coarse and its vertical motion
+carries 14 to 23&nbsp;%.
+
+## A slab
+
+A layered half-space cannot hold a slab. Boundaries can: the footwall plate
+is continued down dip as an elastic slab, and the interface between plate and
+mantle wraps it. With a slab to 150&nbsp;km the uplift behind the trench
+barely relaxes, and the postseismic displacement differs from the model
+without one by 61, 70 and 43&nbsp;% at 1, 10 and 100 relaxation times.
+
+Two limits are stated on that model. The slab is welded to the mantle below
+the megathrust, and plate and mantle share one density, because a lighter
+slab hanging in a heavier mantle is unstable once anything relaxes. And the
+walls do not know about the slab: between a 500 and an 800&nbsp;km box the
+horizontal agrees to 2&nbsp;%, but the vertical at 100 relaxation times
+differs by 31&nbsp;%.
+
+## What is not here
+
+Everything on this site is linear. A power-law mantle, rate-and-state
+friction and a fault that chooses when to slip all need a time-stepper, which
+is designed and not built. Slip is uniform on each rupture. The substrate is
+a Maxwell material with one relaxation time; a Burgers material is
+implemented and not shown.

@@ -1,0 +1,190 @@
+/* Shared with brendanjmeade.github.io/kes, so the two sites read as siblings:
+   a fixed top nav, a 336px sidebar that stays in view, and one 780px content
+   column. Light only. Tokens unchanged; the additions at the end are the
+   viewer's controls and colour bar. */
+
+:root {
+  color-scheme: light;
+  --nav-h: 88px;
+  --fs: 15px;
+  --bg: #ffffff;
+  --fg: #222222;
+  --fg-dim: #555555;
+  --fg-faint: #888888;
+  --link: #031326;
+  --rule: #dddddd;
+  --box-bg: #fafbfc;
+  --accent: #b5367a;
+  --btn-bg: #222222;
+  --btn-fg: #ffffff;
+  --btn-bg-hover: #444444;
+  --font: "Source Sans 3", "Myriad Pro", "Helvetica Neue", Arial, sans-serif;
+  --serif: "Iowan Old Style", Palatino, Georgia, "Times New Roman", serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { background: var(--bg); }
+
+body {
+  font-family: var(--font);
+  font-size: var(--fs);
+  line-height: 1.5;
+  color: var(--fg);
+  background: var(--bg);
+  padding: var(--nav-h) 60px 40px;
+  max-width: 1276px;
+}
+
+a, a:visited { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+nav.top {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 5;
+  background: var(--bg);
+  padding: 39px 60px 26px;
+  font-size: 15px;
+}
+nav.top a { margin-right: 4px; }
+nav.top .sep { margin-right: 4px; color: var(--fg-faint); }
+nav.top a[aria-current="page"] { color: var(--fg); }
+
+.columns { display: flex; gap: 40px; align-items: flex-start; }
+
+.sidebar {
+  position: sticky;
+  top: var(--nav-h);
+  width: 336px;
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  max-height: calc(100vh - var(--nav-h));
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
+.sidebar h1 { font-size: 26px; font-weight: normal; margin-bottom: 14px; }
+.sidebar h1 .sub { display: block; font-size: 14px; color: var(--fg-dim); margin-top: 2px; }
+.sidebar p { margin-bottom: 14px; }
+.sidebar .contact { font-size: 13px; color: var(--fg-dim); margin-top: 14px; }
+.sidebar .links { font-size: 13px; margin-top: 10px; }
+.sidebar .links div { margin-bottom: 3px; }
+.sidebar hr { border: none; border-top: 1px dotted #ccc; margin: 16px 0; }
+
+.main { flex: 1; min-width: 0; max-width: 780px; }
+.main p { margin-bottom: 16px; }
+
+/* Article typography (Concepts) */
+.main h2 {
+  font-size: 22px; font-weight: normal; margin: 0 0 14px;
+  scroll-margin-top: calc(var(--nav-h) + 12px);
+}
+.main h2 ~ h2 { margin-top: 44px; border-top: 1px solid var(--rule); padding-top: 30px; }
+.main h3 { font-size: 17px; font-weight: normal; margin: 26px 0 10px; scroll-margin-top: calc(var(--nav-h) + 12px); }
+.main ul, .main ol { margin: 0 0 16px 1.4em; }
+.main li { margin-bottom: 6px; }
+.main .katex-display { margin: 18px 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+.main .katex { font-size: 1.08em; }
+
+figure { margin: 22px 0 26px; }
+figure img { display: block; width: 100%; height: auto; }
+figcaption { font-size: 13px; color: var(--fg-dim); margin-top: 8px; line-height: 1.5; }
+figcaption b { color: var(--fg); font-weight: 600; }
+
+.toc h3 { font-size: 13px; font-weight: bold; margin: 0 0 7px; }
+.toc ol { list-style: none; padding: 0; margin: 0; counter-reset: toc; }
+.toc li { counter-increment: toc; margin-bottom: 4px; line-height: 1.45; }
+.toc a::before { content: counter(toc) "\00a0\00a0"; color: var(--fg-faint); }
+
+.note {
+  background: var(--box-bg); border: 1px solid var(--rule);
+  padding: 12px 14px; font-size: 14px; margin: 18px 0;
+}
+
+button, .btn {
+  font: inherit; font-size: 13px; cursor: pointer;
+  background: var(--btn-bg); color: var(--btn-fg);
+  border: none; padding: 5px 12px; border-radius: 3px;
+}
+button:hover { background: var(--btn-bg-hover); }
+button.ghost { background: transparent; color: var(--link); border: 1px solid var(--rule); }
+button.ghost:hover { background: var(--box-bg); }
+button:disabled { opacity: .5; cursor: default; }
+
+@media (max-width: 1000px) {
+  body { padding: var(--nav-h) 30px 30px; }
+  nav.top { padding: 39px 30px 26px; }
+  .sidebar { width: 290px; }
+}
+
+@media (max-width: 760px) {
+  :root { --nav-h: 70px; }
+  body { padding: var(--nav-h) 16px 24px; }
+  nav.top { padding: 24px 16px 20px; }
+  .columns { flex-direction: column; gap: 0; }
+  .sidebar { position: static; width: 100%; max-height: none; overflow: visible; }
+}
+
+/* --- ve: the viewer, its clock and colour bars, the profile ------------- */
+
+.cap { font-size: 13px; color: var(--fg-dim); margin-top: 10px; }
+.cap b { color: var(--fg); font-weight: 600; }
+
+.viewer { margin-bottom: 18px; }
+.viewer .canvas { width: 100%; min-height: 440px; cursor: grab; background: #fff; }
+.viewer .canvas:active { cursor: grabbing; }
+.viewer .canvas canvas { display: block; }
+.viewer .panel {
+  display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
+  margin: 10px 0; font-size: 13px;
+}
+.viewer .panel label { display: flex; align-items: center; gap: 6px; }
+.viewer .panel label > span:first-child { color: var(--fg-dim); }
+.viewer .panel label > input[type="checkbox"] + span { color: var(--fg); }
+.viewer .panel select { font: inherit; font-size: 13px; padding: 2px 4px; max-width: 100%; }
+.viewer .panel input[type="range"] { width: 120px; accent-color: var(--fg); }
+.viewer .panel .sheets { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.viewer .panel.clock input[type="range"] { flex: 1; min-width: 160px; }
+.viewer .panel.clock button { min-width: 58px; }
+.viewer .panel .val { color: var(--fg-dim); min-width: 210px; font-variant-numeric: tabular-nums; }
+.viewer .bar { margin-top: 8px; }
+.viewer .bar .strip { height: 10px; border: 1px solid var(--rule); }
+.viewer .bar .ends {
+  display: flex; justify-content: space-between; gap: 10px; font-size: 12px;
+  color: var(--fg-dim); margin-top: 3px; font-variant-numeric: tabular-nums;
+}
+.viewer .bar .ends .mid { color: var(--fg-faint); text-align: center; }
+.viewer .status { font-size: 12px; color: var(--fg-faint); margin: 6px 0 0; overflow-wrap: anywhere; }
+.viewer h2 { margin-top: 30px; border-top: 1px solid var(--rule); padding-top: 24px; }
+
+.sidebar .facts ul { margin: 0 0 14px 1.2em; }
+.sidebar .facts li { margin-bottom: 4px; }
+
+.profile { position: relative; }
+.profile .what { font-size: 13px; color: var(--fg-dim); margin: 0 0 8px; }
+.profile .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; margin-bottom: 6px; }
+.profile .legend .item { display: flex; align-items: center; gap: 6px; }
+.profile .swatch { display: inline-block; width: 18px; border-top: 2px solid; }
+.profile .charts { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.profile .charts svg { flex: 1 1 300px; min-width: 0; height: auto; display: block; touch-action: none; }
+.profile svg text { font-family: var(--font); fill: var(--fg-dim); }
+.profile svg .tick { font-size: 11px; font-variant-numeric: tabular-nums; }
+.profile svg .lab { font-size: 12px; }
+.profile .misfit { font-size: 13px; color: var(--fg-dim); margin: 6px 0 0; }
+.profile .tip {
+  position: absolute; z-index: 3; width: 220px; pointer-events: none;
+  background: var(--bg); border: 1px solid var(--rule); padding: 7px 9px;
+  font-size: 12px; line-height: 1.45; box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+}
+.profile .tip .head { color: var(--fg-dim); margin-bottom: 3px; }
+.profile .tip .row { display: flex; align-items: baseline; gap: 6px; }
+.profile .tip .row b { font-weight: 600; min-width: 52px; font-variant-numeric: tabular-nums; }
+.profile .tip .row span:last-child { color: var(--fg-dim); }
+.profile .tip .swatch { align-self: center; width: 12px; }
+
+@media (max-width: 760px) {
+  .viewer .canvas { min-height: 320px; }
+  .viewer .panel .val { min-width: 0; }
+}

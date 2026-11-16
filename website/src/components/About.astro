@@ -1,0 +1,36 @@
+---
+// Sidebar block shared by the home, Concepts and Running pages.
+---
+<p>
+  After an earthquake the ground keeps moving for decades: the rock below the
+  plate flows, the stress the earthquake left there relaxes, and a fault that
+  was locked creeps. <b>ve</b> shows models of that, solved with
+  <a href="https://brendanjmeade.github.io/mbem/">mbem</a>, a mollified
+  boundary element method, and <i>without a volume mesh</i>: only the free
+  surface, the base of the plate, the faults and the walls of a box carry
+  unknowns.
+</p>
+<p>
+  A linear viscoelastic problem is an elastic one at each value of the Laplace
+  variable. So a model here is fourteen elastic solves, and every time between
+  the earthquake and a hundred relaxation times is one linear combination of
+  them.
+</p>
+<div class="links">
+  <div>
+    Method: Meade, B. J. (2026), Three dimensional non-singular mollified
+    elastic dislocation theory for extended width fault zones and inhomogeneous
+    boundary element models, <i>arXiv</i>:2609.15601.
+    <a href="https://arxiv.org/abs/2609.15601">arxiv.org/abs/2609.15601</a>
+  </div>
+  <div>
+    Solver: <a href="https://github.com/brendanjmeade/mbem">github.com/brendanjmeade/mbem</a>
+  </div>
+  <div>
+    This site: <a href="https://github.com/brendanjmeade/ve">github.com/brendanjmeade/ve</a>
+  </div>
+</div>
+<div class="contact">
+  Developed by <a href="https://brendanjmeade.github.io/">Brendan Meade</a>
+  and Claude.
+</div>

@@ -1,0 +1,51 @@
+---
+import Base from "../layouts/Base.astro";
+import About from "../components/About.astro";
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+---
+<Base
+  title="ve"
+  description="Viscoelastic earthquake cycles from boundary elements alone: postseismic motion, the cycle of a locked fault, afterslip and a subducting slab, with no volume mesh."
+  current="home"
+>
+  <Fragment slot="sidebar">
+    <h1>ve<span class="sub">viscoelastic earthquake cycles, boundary elements only</span></h1>
+    <About />
+  </Fragment>
+
+  <div
+    id="hero"
+    class="hero"
+    aria-label="The free surface above a megathrust, coloured by how far it has moved vertically since the earthquake and displaced by that motion, looping from the earthquake to one hundred relaxation times"
+  ></div>
+  <p class="cap">
+    The ground above a megathrust, from the earthquake to 100 Maxwell times
+    after it. Colour is the <b>vertical displacement since the earthquake</b>
+    (red up, blue down), and the surface is displaced by that motion,
+    exaggerated. The fault (<b>pink</b>) dips 20&deg; through a 30&nbsp;km
+    elastic plate into a Maxwell substrate; the rupture is 300&nbsp;km long.
+    The sheet below the surface is the base of the plate. The model has 219,315
+    unknowns, all of them on boundaries, and was solved fourteen times, once
+    per Laplace state. Drag to orbit. See
+    <a href={`${base}concepts/`}>Concepts</a> for how fourteen elastic solves
+    become every time, and <a href={`${base}examples/`}>Examples</a> to move
+    the clock yourself.
+  </p>
+
+  <style>
+    .hero { position: relative; min-height: 440px; width: 100%; overflow: hidden; cursor: grab; }
+    .hero:active { cursor: grabbing; }
+  </style>
+  <style is:global>
+    .hero canvas { display: block; }
+    .hero .clock {
+      position: absolute; left: 0; bottom: 4px; font-size: 13px;
+      color: var(--fg-dim); font-variant-numeric: tabular-nums;
+      pointer-events: none;
+    }
+  </style>
+  <script>
+    import { startHero } from "../viz/hero";
+    startHero(document.getElementById("hero")!, import.meta.env.BASE_URL);
+  </script>
+</Base>

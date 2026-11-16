@@ -1,0 +1,36 @@
+---
+import Base from "../layouts/Base.astro";
+import About from "../components/About.astro";
+import Concepts from "../content/concepts.mdx";
+
+const sections = [
+  ["a-relaxing-earth-is-an-elastic-one-many-times", "A relaxing Earth is an elastic one, many times"],
+  ["from-fourteen-solves-to-every-time", "From fourteen solves to every time"],
+  ["the-cycle-of-a-locked-fault", "The cycle of a locked fault"],
+  ["a-box-whose-walls-are-a-window", "A box whose walls are a window"],
+  ["a-plate-that-bends", "A plate that bends"],
+  ["gravity-on-the-boundary", "Gravity, on the boundary"],
+  ["a-fault-that-creeps", "A fault that creeps"],
+  ["a-slab", "A slab"],
+  ["what-is-not-here", "What is not here"],
+];
+---
+<Base
+  title="ve — Concepts"
+  description="How fourteen elastic boundary element solves become a viscoelastic earthquake cycle: the Laplace route, a box whose walls are a window, the two-mesh limit, a fault that creeps and a slab."
+  current="concepts"
+>
+  <Fragment slot="sidebar">
+    <h1>Concepts<span class="sub">how the models work</span></h1>
+    <nav class="toc" aria-label="Contents">
+      <h3>Contents</h3>
+      <ol>
+        {sections.map(([id, label]) => <li><a href={`#${id}`}>{label}</a></li>)}
+      </ol>
+    </nav>
+    <hr />
+    <About />
+  </Fragment>
+
+  <Concepts />
+</Base>
