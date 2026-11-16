@@ -40,15 +40,10 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
       <label><span>Show</span><span data-ctl="quantity"></span></label>
       <label><span>Colour by</span><span data-ctl="scalar"></span></label>
     </div>
-    <div data-canvas class="canvas"></div>
+    <div data-canvas class="stage"></div>
+    <div data-timeline></div>
     <div data-bar class="bar"></div>
     <div data-slipbar class="bar" hidden></div>
-    <div class="panel clock">
-      <button data-play type="button">play</button>
-      <input data-clock type="range" min="0" max="1" step="0.02" value="0"
-             aria-label="time" />
-      <span data-when class="val"></span>
-    </div>
     <div class="panel">
       <span data-sheets class="sheets"></span>
       <label><input data-elements type="checkbox" /><span>elements</span></label>
@@ -60,13 +55,18 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     <p data-status class="status">loading&hellip;</p>
 
     <h2>Across the trench, at mid-strike</h2>
+    <div data-timeline></div>
     <div data-profile class="profile"></div>
   </div>
 
   <p class="cap">
-    Pink outlines the fault. Every sheet is coloured by the quantity chosen
-    and displaced by the motion, exaggerated; the colour scale is fixed
-    across time, so a pale early frame is a small early motion.
+    <b>The slider is time.</b> Drag it, or press play, to move every sheet
+    and the profile from the earthquake to 100 Maxwell times; the two sliders
+    are one clock. It is logarithmic in time, so each decade has the same
+    length, and its first stop is the earthquake itself. Pink outlines the
+    fault. Every sheet is coloured by the quantity chosen and displaced by
+    the motion, exaggerated; the colour scale is fixed across time, so a pale
+    early frame is a small early motion.
     <b>Deviatoric stress</b> is the size of the deviatoric part of the
     elastic stress, on a log scale over three decades; it lives in the
     volume, so only the section carries it and the other sheets are drawn

@@ -1,24 +1,21 @@
-// The landing page's scene: the megathrust, moving. No controls; the clock
-// loops from the earthquake to the end of the fit's window and a slow orbit
-// runs until the visitor takes the camera.
+// The landing page's scene: the megathrust, moving. The clock plays from the
+// earthquake to the end of the fit's window and starts again, under a slider
+// the visitor can take, and a slow sway runs until they take the camera.
 
 import { Payload } from "./payload";
 import { SheetScene } from "./scene";
+import { Clock, Timeline } from "./timeline";
 import { ModelView, type Choice } from "./view";
-import { when } from "./controls";
 
-const LOOP_S = 14;             // one pass of the clock, seconds
-const HOLD = 0.12;             // of the loop, resting on the last frame
-
-export async function startHero(el: HTMLElement, baseUrl: string) {
+export async function startHero(el: HTMLElement, bar: HTMLElement,
+                                baseUrl: string) {
   const payload = new Payload(baseUrl);
   const scene = new SheetScene(el);
   const view = new ModelView(scene, payload);
   const choice: Choice = { quantity: "since", scalar: "z" };
-  const readout = document.createElement("div");
-  readout.className = "clock";
-  readout.textContent = "loading the model\u2026";
-  el.append(readout);
+  const clock = new Clock(14, 1.7);
+  const timeline = new Timeline(bar, clock);
+  timeline.say("loading the model…");
   try {
     await payload.load();
     const first = payload.manifest.models[0];
@@ -28,7 +25,7 @@ export async function startHero(el: HTMLElement, baseUrl: string) {
     await view.load(first.key, ["u"],
                     "section" in m.sheets ? ["top", "section"] : undefined);
   } catch {
-    readout.textContent = "The model data is not available in this build.";
+    timeline.say("The model data is not available in this build.");
     return;
   }
   scene.start();
@@ -41,30 +38,30 @@ export async function startHero(el: HTMLElement, baseUrl: string) {
     }
   }
 
-  const q = view.quantity(choice);
-  const top = q.at.length - 1;
-  let idle = true, angle = -1.1, t0 = 0;
+  // A visitor who asked for less motion gets the last frame, still, and a
+  // slider and a play button that move it only when they do.
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let idle = !still, moved = true, angle = -1.1, t0 = 0;
   el.addEventListener("pointerdown", () => { idle = false; }, { once: true });
   el.addEventListener("wheel", () => { idle = false; }, { once: true });
+  scene.place(block ? -1.25 : angle, block ? 0.36 : 0.5);
 
-  // A visitor who asked for less motion gets the last frame, still.
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    view.set(choice, top, 1);
-    readout.textContent = when(q, top);
-    return scene;
-  }
+  const q = view.quantity(choice);
+  clock.on(() => { moved = true; });
+  clock.setAxis(q, still ? q.at.length - 1 : 0);
+  if (!still) clock.play();
 
+  // One frame, one draw: the fields are recomputed only when the clock has
+  // moved, and the sway alone redraws what is already there.
   const tick = (now: number) => {
     t0 = t0 || now;
-    const phase = ((now - t0) / 1000 / LOOP_S) % 1;
-    const pos = Math.min(phase / (1 - HOLD), 1) * top;
     if (idle) {
       // a block diagram sways in front of its cut face; a surface turns
       angle = block ? -1.25 + 0.4 * Math.sin((now - t0) / 9000) : angle + 0.0009;
       scene.place(angle, block ? 0.36 : 0.5);
     }
-    view.set(choice, pos, 1);
-    readout.textContent = when(q, pos);
+    if (moved) { view.set(choice, clock.pos, 1); moved = false; }
+    else if (idle) scene.render();
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);

@@ -132,10 +132,72 @@ button:disabled { opacity: .5; cursor: default; }
 .cap { font-size: 13px; color: var(--fg-dim); margin-top: 10px; }
 .cap b { color: var(--fg); font-weight: 600; }
 
+/* A 3-D scene's box. Its height comes from its width and never from the
+   canvas inside it, and the canvas fills it: a WebGL canvas's own size is
+   its drawing buffer's, which is the box times the display's pixel density,
+   so a canvas left to size itself is twice too large on a 2x display. */
+.stage {
+  position: relative; width: 100%; aspect-ratio: 16 / 9;
+  min-height: 300px; max-height: 72vh; overflow: hidden;
+  background: #fff; cursor: grab; touch-action: none;
+}
+.stage:active { cursor: grabbing; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* The clock: play, a slider marked in decades of time, and the time in
+   words. The marks sit under the thumb's centre, which travels the slider
+   less half a thumb at each end; the thumb is given a size so that holds. */
+.timeline {
+  --f: 0;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0 14px; align-items: start; margin: 10px 0 6px; font-size: 13px;
+}
+.timeline button.play { min-width: 62px; margin-top: 1px; }
+.timeline .track { position: relative; padding-bottom: 22px; }
+.timeline input[type="range"] {
+  -webkit-appearance: none; appearance: none; display: block;
+  width: 100%; height: 26px; margin: 0; background: transparent; cursor: pointer;
+}
+.timeline input[type="range"]:disabled { opacity: .4; cursor: default; }
+.timeline input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 2px;
+  background: linear-gradient(to right, var(--fg) calc(var(--f) * 100%), var(--rule) 0);
+}
+.timeline input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; box-sizing: border-box; width: 16px; height: 16px;
+  margin-top: -6px; border-radius: 50%; background: var(--fg);
+  border: 2px solid var(--bg); box-shadow: 0 0 0 1px var(--fg);
+}
+.timeline input[type="range"]::-moz-range-track {
+  height: 4px; border-radius: 2px; background: var(--rule);
+}
+.timeline input[type="range"]::-moz-range-progress {
+  height: 4px; border-radius: 2px; background: var(--fg);
+}
+.timeline input[type="range"]::-moz-range-thumb {
+  box-sizing: border-box; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--fg); border: 2px solid var(--bg); box-shadow: 0 0 0 1px var(--fg);
+}
+.timeline input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.timeline .ticks { position: absolute; left: 8px; right: 8px; top: 24px; height: 20px; pointer-events: none; }
+.timeline .ticks span {
+  position: absolute; top: 0; transform: translateX(-50%); padding-top: 6px;
+  font-size: 11px; line-height: 1.2; color: var(--fg-dim); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.timeline .ticks span::before {
+  content: ""; position: absolute; left: 50%; top: 0; height: 5px;
+  border-left: 1px solid var(--fg-faint);
+}
+/* the last mark's name ends at its tick, not past the slider's end */
+.timeline .ticks span:last-child { transform: translateX(calc(-100% + 9px)); }
+.timeline .ticks span:last-child::before { left: auto; right: 9px; }
+.timeline .now {
+  display: block; min-width: 9em; max-width: 15em; padding-top: 4px;
+  color: var(--fg); font-variant-numeric: tabular-nums; line-height: 1.35;
+}
+
 .viewer { margin-bottom: 18px; }
-.viewer .canvas { width: 100%; min-height: 440px; cursor: grab; background: #fff; }
-.viewer .canvas:active { cursor: grabbing; }
-.viewer .canvas canvas { display: block; }
 .viewer .panel {
   display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
   margin: 10px 0; font-size: 13px;
@@ -146,8 +208,6 @@ button:disabled { opacity: .5; cursor: default; }
 .viewer .panel select { font: inherit; font-size: 13px; padding: 2px 4px; max-width: 100%; }
 .viewer .panel input[type="range"] { width: 120px; accent-color: var(--fg); }
 .viewer .panel .sheets { display: flex; flex-wrap: wrap; gap: 8px 14px; }
-.viewer .panel.clock input[type="range"] { flex: 1; min-width: 160px; }
-.viewer .panel.clock button { min-width: 58px; }
 .viewer .panel .val { color: var(--fg-dim); min-width: 210px; font-variant-numeric: tabular-nums; }
 .viewer .bar { margin-top: 8px; }
 .viewer .bar .strip { height: 10px; border: 1px solid var(--rule); }
@@ -185,11 +245,34 @@ button:disabled { opacity: .5; cursor: default; }
 .profile .tip .swatch { align-self: center; width: 12px; }
 
 @media (max-width: 760px) {
-  .viewer .canvas { min-height: 320px; }
+  .stage { aspect-ratio: 4 / 3; }
   .viewer .panel .val { min-width: 0; }
+  /* the time gets a line of its own above the slider */
+  .timeline { grid-template-columns: auto minmax(0, 1fr); }
+  .timeline .now { grid-column: 1 / -1; grid-row: 1; max-width: none; padding: 0 0 4px; }
 }
 
 .note p:last-child { margin-bottom: 0; }
+
+/* Tables in prose (Theory). A table wider than the column scrolls inside
+   itself, as a displayed equation does. */
+.main table {
+  display: block; overflow-x: auto; max-width: 100%;
+  border-collapse: collapse; margin: 6px 0 20px; font-size: 14px;
+}
+.main th, .main td {
+  text-align: left; vertical-align: top; padding: 5px 16px 5px 0;
+  border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums;
+}
+.main th { font-weight: 600; border-bottom-color: var(--fg-faint); }
+.main td .katex, .main th .katex { font-size: 1em; }
+
+.weights { margin: 20px 0 24px; }
+.weights .chart svg { display: block; width: 100%; height: auto; }
+.weights svg text { font-family: var(--font); fill: var(--fg-dim); }
+.weights svg .tick { font-size: 11px; font-variant-numeric: tabular-nums; }
+.weights svg .lab { font-size: 12px; }
+.weights .note-line { font-size: 13px; color: var(--fg-dim); margin: 4px 0 0; font-variant-numeric: tabular-nums; }
 
 /* In one column the main block must take the column's width, not its
    content's: a code block or a displayed equation is wider than a phone, and

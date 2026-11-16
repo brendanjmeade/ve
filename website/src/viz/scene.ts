@@ -16,7 +16,7 @@ import {
   BufferAttribute, BufferGeometry, Color, DataTexture, DoubleSide,
   DynamicDrawUsage, Float32BufferAttribute, GLSL3, Group, LinearFilter,
   LineBasicMaterial, LineSegments, Mesh, PerspectiveCamera, RGBAFormat, Scene,
-  ShaderMaterial, Vector3, Vector4, WebGLRenderer,
+  ShaderMaterial, Vector2, Vector3, Vector4, WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { lut, type MapName } from "./colormaps";
@@ -65,6 +65,8 @@ void main() {
 }`;
 
 export interface Scale { lo: number; hi: number; log: boolean; map: MapName; }
+
+const FILL = 0.92;           // of the view, taken by the model's box
 
 export class Sheet {
   readonly mesh: Mesh;
@@ -181,6 +183,13 @@ export class SheetScene {
   private el: HTMLElement;
   private raf = 0;
   private extent = new Vector3(1, 1, 1);
+  private w = 0;
+  private h = 0;
+  private dpr = 0;
+  private framed = false;      // a model is in, and the visitor has not moved
+  private azimuth = -1.1;
+  private elevation = 0.5;
+  private shift = new Vector2();
 
   constructor(el: HTMLElement) {
     this.el = el;
@@ -190,13 +199,16 @@ export class SheetScene {
     // +y up. OrbitControls reads this, so it is set before they are made.
     this.camera.up.set(0, 0, 1);
     this.renderer = new WebGLRenderer({ antialias: true, alpha: false });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     el.appendChild(this.renderer.domElement);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
     this.scene.add(this.overlays);
     this.resize();
+    // The host's box, not the window, is what the canvas fills: it changes
+    // when a column wraps or a font arrives, with no window resize at all.
+    // A change of pixel density (a zoom, another monitor) is a window one.
+    new ResizeObserver(() => this.resize()).observe(el);
     addEventListener("resize", () => this.resize());
   }
 
@@ -238,6 +250,7 @@ export class SheetScene {
     const c = this.controls.target;
     c.set((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (z0 + hi[2]) / 2);
     this.place(-1.1, 0.5);
+    this.framed = true;
     // OrbitControls recomputes the camera only inside update(), and update()
     // runs in the loop, which starts on interaction: without this the first
     // frame is drawn with the default orientation and the canvas is blank.
@@ -247,39 +260,69 @@ export class SheetScene {
 
   /** Put the camera at `azimuth` about the vertical and `elevation` above
    *  the horizon (radians), as near as keeps the whole box in frame
-   *  whatever the canvas's shape: the distance is corrected until the
-   *  box's own corners project inside the view. */
+   *  whatever the canvas's shape. The box's own corners are projected and
+   *  the distance corrected until their bounding rectangle fills `FILL` of
+   *  the view; then the picture is shifted so that rectangle is centred,
+   *  because in perspective a box does not project about its middle (its
+   *  near edge is the larger) and would sit low with air above it. */
   place(azimuth: number, elevation: number) {
-    const c = this.controls.target, e = this.extent;
+    this.azimuth = azimuth; this.elevation = elevation;
+    const c = this.controls.target, e = this.extent, cam = this.camera;
     const dir = new Vector3(Math.cos(elevation) * Math.cos(azimuth),
                             Math.cos(elevation) * Math.sin(azimuth),
                             Math.sin(elevation));
-    let d = e.length();
+    cam.aspect = (this.w || 1) / (this.h || 1);
+    cam.clearViewOffset();               // measured without the shift
     const corner = new Vector3();
-    for (let pass = 0; pass < 4; pass++) {
-      this.camera.position.copy(c).addScaledVector(dir, d);
-      this.camera.lookAt(c);
-      this.camera.updateMatrixWorld();
-      let reach = 0;
+    const box = { cx: 0, cy: 0, reach: 1 };
+    const measure = (d: number) => {
+      cam.position.copy(c).addScaledVector(dir, d);
+      cam.lookAt(c);
+      cam.updateMatrixWorld();
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
       for (const sx of [-0.5, 0.5]) for (const sy of [-0.5, 0.5]) for (const sz of [-0.5, 0.5]) {
-        corner.set(c.x + sx * e.x, c.y + sy * e.y, c.z + sz * e.z).project(this.camera);
-        reach = Math.max(reach, Math.abs(corner.x), Math.abs(corner.y));
+        corner.set(c.x + sx * e.x, c.y + sy * e.y, c.z + sz * e.z).project(cam);
+        x0 = Math.min(x0, corner.x); x1 = Math.max(x1, corner.x);
+        y0 = Math.min(y0, corner.y); y1 = Math.max(y1, corner.y);
       }
-      d *= reach / 0.9;
+      box.cx = (x0 + x1) / 2; box.cy = (y0 + y1) / 2;
+      box.reach = Math.max(x1 - x0, y1 - y0) / 2;
+    };
+    let d = e.length();
+    for (let pass = 0; pass < 4; pass++) {
+      measure(d);
+      d *= box.reach / FILL;
     }
-    this.camera.position.copy(c).addScaledVector(dir, d);
-    this.camera.lookAt(c);
+    measure(d);
+    this.shift.set(box.cx, box.cy);
+    this.applyShift();
+  }
+
+  /** Shift the picture by `shift` (in units of half the view), at the
+   *  canvas's present size. */
+  private applyShift() {
+    const w = this.w || 1, h = this.h || 1;
+    this.camera.setViewOffset(w, h, this.shift.x * w / 2, -this.shift.y * h / 2, w, h);
   }
 
   get target(): Vector3 { return this.controls.target; }
   get size(): Vector3 { return this.extent; }
 
+  /** Fit the drawing buffer to the host's box. The canvas's SIZE ON THE PAGE
+   *  is the stylesheet's (`.stage canvas` fills its host), never the
+   *  buffer's: the buffer is the box times the pixel density, and a canvas
+   *  left to its buffer's size is drawn twice too large on a 2x display,
+   *  cut off on the right, and pushes what follows it down the page. */
   resize() {
-    const w = this.el.clientWidth || 640;
-    const h = this.el.clientHeight || Math.round(w * 0.62);
+    const w = Math.max(1, this.el.clientWidth);
+    const h = Math.max(1, this.el.clientHeight);
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    if (w === this.w && h === this.h && dpr === this.dpr) return;
+    this.w = w; this.h = h; this.dpr = dpr;
+    this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(w, h, false);
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
+    if (this.framed) this.place(this.azimuth, this.elevation);
+    else this.applyShift();            // sets the aspect too
     this.render();
   }
 
@@ -289,7 +332,10 @@ export class SheetScene {
       this.raf = requestAnimationFrame(tick);
       if (this.controls.update()) this.render();
     };
-    this.controls.addEventListener("start", () => { if (!this.raf) tick(); });
+    this.controls.addEventListener("start", () => {
+      this.framed = false;       // the camera is the visitor's from here on
+      if (!this.raf) tick();
+    });
     this.controls.addEventListener("end", () => {
       cancelAnimationFrame(this.raf); this.raf = 0; this.render();
     });

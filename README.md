@@ -12,9 +12,9 @@ runs into the site's data, and that data.
 
 | path | what it is |
 |---|---|
-| `website/src/pages/` | Four pages: home, Concepts, Running, Examples. |
-| `website/src/content/` | The prose of Concepts and Running, MDX with KaTeX. |
-| `website/src/viz/` | `payload.ts` (loading, and the one sum the page does), `scene.ts` (sheets in a 3-D scene), `view.ts` (a model at a time), `profile.ts` (the profile chart), `controls.ts`, `hero.ts`. |
+| `website/src/pages/` | Five pages: home, Concepts, Theory, Running, Examples. |
+| `website/src/content/` | The prose of Concepts, Theory and Running, MDX with KaTeX. |
+| `website/src/viz/` | `payload.ts` (loading, and the one sum the page does), `scene.ts` (sheets in a 3-D scene), `view.ts` (a model at a time), `timeline.ts` (the clock and its slider, shared by every moving figure), `profile.ts` (the profile chart), `weights.ts` (the Theory page's figure), `controls.ts`, `hero.ts`. |
 | `website/src/styles/main.css` | Shared with the mbem and kes sites; the additions at the end are this site's. |
 | `website/scripts/make_payload.py` | Stored mbem runs to `website/public/data/`. |
 | `website/public/data/` | The payload: per model a JSON, meshes, modes and a profile. |
@@ -69,6 +69,13 @@ only names the studies and writes the schema `payload.ts` reads.
   comes from an 8-bit lookup table, because a float texture cannot be
   linearly filtered on about half of iOS devices and fails as a black
   surface, not as an error.
+- A 3-D scene lives in a `.stage`: a box whose height comes from its width,
+  with the canvas filling it by CSS. A WebGL canvas's own size is its drawing
+  buffer's, the box times the display's pixel density, so one left to size
+  itself is drawn twice too large on a 2x display and cut off on the right.
+  Check a change to the scene at a device scale factor of 2 as well as 1.
+- Time is one `Clock` per figure, and every slider on it is a `Timeline`.
+  Whatever moves subscribes to the clock; nothing keeps a time of its own.
 - The Laplace inversion is not restated in TypeScript. If a quantity of time
   is wanted that the tables do not hold, add it to `time_weights` in mbem.
 - A surface is drawn through its elements' values averaged to the nodes, and

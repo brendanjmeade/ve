@@ -1,0 +1,785 @@
+import WeightsFigure from "../components/WeightsFigure.astro";
+
+## The problem
+
+The body is a few homogeneous regions: a plate, the rock under it, perhaps a
+slab. They meet on interfaces, faults cut them, and the whole is cut from the
+Earth by the walls of a box. A fault slips at $t=0$ and stays slipped. Wanted
+are the displacement $\mathbf u(\mathbf x,t)$ and the stress
+$\boldsymbol\sigma(\mathbf x,t)$ everywhere, at every later time.
+
+Inertia is dropped. The times of interest are years, and a wave crosses the
+model in minutes, so at each instant the stress is in equilibrium,
+
+$$
+\nabla\cdot\boldsymbol\sigma(\mathbf x,t)=\mathbf 0,
+\qquad
+\boldsymbol\epsilon=\tfrac12\big(\nabla\mathbf u+\nabla\mathbf u^{\mathsf T}\big),
+$$
+
+with small strains. Across an interface the displacement and the traction
+$\boldsymbol\sigma\,\mathbf n$ are continuous. Across a fault with normal
+$\mathbf n$ the traction is continuous and the displacement jumps by the
+slip,
+
+$$
+\mathbf b=\mathbf u(+\mathbf n)-\mathbf u(-\mathbf n).
+$$
+
+On an outer face either the traction or the displacement is given. Gravity
+is taken up [below](#gravity); it turns out to be one more condition of this
+kind. None of these statements has time in it. Time enters through the
+material, and only there.
+
+## The material
+
+Each region is isotropic and linear, and it remembers. Its stress is the sum
+of what every past increment of strain still contributes,
+
+$$
+\boldsymbol\sigma(t)=\int_{0^-}^{t}\Big[\,2\,\mu(t-t')\,
+\operatorname{dev}\dot{\boldsymbol\epsilon}(t')
++K\,\operatorname{tr}\dot{\boldsymbol\epsilon}(t')\,\mathbf I\,\Big]\,dt',
+$$
+
+where $\mu(t)$ is the *relaxation modulus* in shear: the shear stress left at
+time $t$ after a unit step of shear strain, over twice that strain. The bulk
+modulus $K$ is a constant. Rock flows in shear and does not flow in
+compression, so only the deviatoric part relaxes. One consequence is carried
+through everything below: Poisson's ratio is not a constant of the material.
+It rises with time, and reaches $1/2$ in a region that has relaxed
+completely.
+
+Two materials are implemented.
+
+**Maxwell.** A spring $\mu$ and a dashpot $\eta$ in series: the strain rates
+add,
+$\operatorname{dev}\dot{\boldsymbol\epsilon}
+=\operatorname{dev}\dot{\boldsymbol\sigma}/2\mu
++\operatorname{dev}\boldsymbol\sigma/2\eta$, and
+
+$$
+\mu(t)=\mu\,e^{-t/\tau},\qquad\tau=\frac{\eta}{\mu}.
+$$
+
+It is a fluid. Held at a fixed strain it forgets its stress; held at a fixed
+stress it creeps for ever.
+
+**Burgers.** A Maxwell element in series with a Kelvin element, a spring
+$\mu_K$ beside a dashpot $\eta_K$. Under a step of stress it strains at once,
+then by a transient that saturates in a time $\tau_K=\eta_K/\mu_K$, then
+steadily:
+
+$$
+J(t)=\frac1\mu+\frac{t}{\mu\,\tau_M}+\frac{1-e^{-t/\tau_K}}{\mu_K}.
+$$
+
+The transient takes the modulus from $\mu$ to $\mu\mu_K/(\mu+\mu_K)$ and the
+steady phase takes it to zero.
+
+A rheology is stated in relaxation *times* and *ratios* of moduli, never in
+viscosities: a viscosity only ever appears as $\eta/\mu$. So time has no unit
+of its own here. Everything on this site is in Maxwell times of the
+substrate, and $\tau$ is 10.6 years for $\eta=10^{19}$&nbsp;Pa&nbsp;s and
+$\mu=30$&nbsp;GPa.
+
+## Correspondence
+
+Take the Laplace transform in time,
+$\hat f(s)=\int_0^\infty f(t)\,e^{-st}\,dt$. A convolution becomes a product,
+so the law above becomes
+
+$$
+\hat{\boldsymbol\sigma}=2\,\tilde\mu(s)\,\operatorname{dev}\hat{\boldsymbol\epsilon}
++K\,\operatorname{tr}(\hat{\boldsymbol\epsilon})\,\mathbf I,
+\qquad
+\tilde\mu(s)=s\,\hat\mu(s).
+$$
+
+That is Hooke's law, with an *operational* shear modulus that depends on $s$:
+
+| material | $\tilde\mu(s)$ | $s\to\infty$ | $s\to0$ |
+|---|---|---|---|
+| Maxwell | $\mu\,\dfrac{s}{s+1/\tau}$ | $\mu$ | $0$ |
+| Burgers | $\dfrac1{\tilde\mu}=\dfrac1\mu+\dfrac1{\mu\,\tau_M\,s}+\dfrac1{\mu_K\,(1+\tau_K s)}$ | $\mu$ | $0$ |
+
+Equilibrium, the definition of strain and the conditions on interfaces and
+faults are linear and have no time in them, so they transform unchanged. The
+transformed problem is therefore an *elastic* problem on the same geometry,
+each region with the moduli
+
+$$
+\tilde\mu(s),\qquad\tilde\lambda(s)=K-\tfrac23\,\tilde\mu(s).
+$$
+
+This is the correspondence principle (Lee 1955). It asks two things of the
+problem. The *kind* of condition on every boundary must not change with time:
+a face that is given a displacement stays one. And the data must not hide a
+modulus: a traction written as a stiffness times a strain is not data.
+
+**Step data.** If everything prescribed is switched on at $t=0$ and held, a
+datum $d_0H(t)$ has the transform $d_0/s$, and
+
+$$
+\tilde{\mathbf u}(\mathbf x,s)\equiv s\,\hat{\mathbf u}(\mathbf x,s)
+$$
+
+is *exactly the elastic solution* with the moduli of $s$ and the data $d_0$.
+Nothing but the material changes from one $s$ to the next. Large $s$ is the
+instant of the earthquake and small $s$ is long after it,
+
+$$
+\mathbf u(0^+)=\lim_{s\to\infty}\tilde{\mathbf u}(s),\qquad
+\mathbf u(\infty)=\lim_{s\to0}\tilde{\mathbf u}(s),
+$$
+
+the second being the statement that a completely relaxed body is an elastic
+one with relaxed moduli (Fukahata and Matsu'ura 2006). A step is all that is
+needed: the problem is linear, so any history of slip is a sum of steps, and
+its response is the step response convolved with the slip rate.
+
+## One elastic problem per state
+
+At one value of $s$ the problem is elastic, and it is solved as
+[mbem](https://brendanjmeade.github.io/mbem/concepts/) solves any elastic
+problem: on the boundaries. Inside a region $R$ the displacement is fixed by
+what happens on its surface and on the faults within it,
+
+$$
+\mathbf u(\mathbf x)=\int_{\partial R}\Big[\mathbf G^\varepsilon(\mathbf x,\mathbf y)\,
+\mathbf t(\mathbf y)-\mathbf T^\varepsilon(\mathbf x,\mathbf y)\,\mathbf u(\mathbf y)\Big]dS_y
++\int_{F}\mathbf T^\varepsilon(\mathbf x,\mathbf y)\,\mathbf b(\mathbf y)\,dS_y .
+$$
+
+$\mathbf G^\varepsilon$ is the displacement of a point force and
+$\mathbf T^\varepsilon$ the traction that goes with it, formed with the
+normal out of $R$ on its boundary and with the fault's own normal on $F$.
+Taking $\mathbf x$ to the boundary gives, for each region, one equation
+between the displacement and the traction on its surface. Two regions that
+share an interface share its displacement and its traction; on an outer face
+one of the two is given. In the models here the unknowns are constant on
+each triangle and the equations are collocated at the centroids.
+
+The superscript is what makes this method the one it is. The force is not a
+point but a blob of width $\varepsilon$, so the kernels are finite
+everywhere, on the element itself included, and each triangle's integral is
+done in closed form:
+
+$$
+\mathbf G^\varepsilon=\frac1\mu\Big[\boldsymbol\Gamma_A+g\,\boldsymbol\Gamma_B\Big],\qquad
+\Gamma_{A,ij}=\frac{\delta_{ij}}{4\pi R_\varepsilon}
++\frac{\varepsilon^2\delta_{ij}}{8\pi R_\varepsilon^3},\qquad
+\Gamma_{B,ij}=\frac1{16\pi}\Big(\frac{d_id_j}{R_\varepsilon^3}
+-\frac{\delta_{ij}}{R_\varepsilon}\Big),
+$$
+
+with $\mathbf d=\mathbf x-\mathbf y$,
+$R_\varepsilon=\sqrt{\lvert\mathbf d\rvert^2+\varepsilon^2}$ and
+
+$$
+g=\frac1{1-\nu}.
+$$
+
+Mollification is geometry. It commutes with the transform: the mollified
+kernel at the moduli of $s$ is the transform of the response to the same
+blob.
+
+## What changes between states
+
+Written that way, the kernel shows where the material is. Poisson's ratio
+enters only through $g$, and the shear modulus only as a factor. The same is
+true of every operator the method uses:
+
+| operator | form |
+|---|---|
+| traction to displacement, $\mathbf G^\varepsilon$ | $\mu^{-1}\,(U_A+g\,U_B)$ |
+| slip or boundary displacement to displacement, $\mathbf T^\varepsilon$ | $T_A+g\,T_B$ |
+| slip to elastic stress | $\mu\,(S_A+g\,S_B)$ |
+
+Every $A$ and $B$ depends on the mesh and on $\varepsilon$ and on nothing
+else. A region's whole dependence on $s$ is three scalars,
+$\tilde\mu$, $1/\tilde\mu$ and
+
+$$
+g(s)=\frac{2\,\big(3K+\tilde\mu(s)\big)}{3K+4\,\tilde\mu(s)},
+$$
+
+which runs from its elastic value up to $2$ as the region relaxes. So a
+model is assembled once, and a state is that assembly recombined.
+
+Two things in that table are not obvious.
+
+**Nothing is singular as a region becomes a fluid.** The slip kernel has a
+term in $\lambda$, and $\lambda/\mu$ grows without bound as $\nu\to1/2$. But
+it multiplies the divergence of $\boldsymbol\Gamma_A+g\,\boldsymbol\Gamma_B$,
+which carries the factor $g-2=-(1-2\nu)/(1-\nu)$, and the product is
+$-2\,(g-1)$: finite, mollified terms included. $\mathbf T^\varepsilon$ has no
+$\mu$ in it at all.
+
+**The stress has this form only once the eigenstress is removed.** A
+mollified fault does not jump; it smears its slip over the width
+$\varepsilon$. The smeared slip is an eigenstrain $\boldsymbol\epsilon^*$,
+fixed in space, and the elastic stress is
+
+$$
+\boldsymbol\sigma=\mathbf C:\big(\nabla\mathbf u-\boldsymbol\epsilon^*\big).
+$$
+
+The raw $\mathbf C:\nabla\mathbf u$ differs from it by
+$2\mu\,\boldsymbol\epsilon^*+\lambda\operatorname{tr}(\boldsymbol\epsilon^*)\,\mathbf I$,
+and $\lambda/\mu=2\,(g-1)/(2-g)$ is not linear in $g$ and is unbounded at
+$g=2$. Removing the eigenstress is what makes a stress an elastic stress in
+the first place; it is also what lets a region relax.
+
+## One mollification width
+
+With a single blob the kernel is one exact elastic field, and two
+identities hold on any closed surface $\partial V$. They hold on the faceted
+mesh itself, to rounding, because each triangle is integrated exactly.
+
+A rigid translation costs nothing. The traction of the blob's field
+integrates to minus the force enclosed,
+
+$$
+\oint_{\partial V}\mathbf T^\varepsilon(\mathbf x,\mathbf y)\,dS_y
+=-\,\mathbf I\int_V\phi_\varepsilon(\mathbf x-\mathbf y)\,dV_y ,
+$$
+
+and there is no material in that. The diagonal of the equations is this sum,
+so it is the same at every $s$.
+
+A uniform pressure moves nothing in an incompressible body. At $g=2$,
+$\mu\,\mathbf G^\varepsilon$ is the regularised Stokeslet of Cortez (2001),
+which is divergence-free, so
+
+$$
+\oint_{\partial V}\big(\boldsymbol\Gamma_A+2\,\boldsymbol\Gamma_B\big)\,\mathbf n\,dS_y=\mathbf 0 .
+$$
+
+This null mode is what leaves the small compressibility, alone, to set the
+pressure of a region that has nearly relaxed.
+
+If each element is given its own width, the sum is no longer one field and
+both identities fail by the amount the width varies over the surface. The
+failure of the second is amplified by $K/\tilde\mu(s)$, which is what a
+relaxing region makes large. Measured on a sphere in a relaxing host, the
+hydrostatic strain against its closed form:
+
+| $\tilde\mu(s)/K$ | a width per element | one width |
+|---|---|---|
+| $4.6\times10^{-3}$ | $-0.2$&nbsp;% | $-0.1$&nbsp;% |
+| $4.6\times10^{-4}$ | $-9.4$&nbsp;% | $-0.2$&nbsp;% |
+| $4.6\times10^{-5}$ | $-54$&nbsp;% | $-0.2$&nbsp;% |
+| $4.6\times10^{-6}$ | $-95$&nbsp;% | $-0.2$&nbsp;% |
+
+Hence the one rule relaxation adds to the elastic method: **the closed
+boundary of a region that relaxes carries one mollification width.** With it
+the solve is unchanged down to $\nu=0.499998$.
+
+## Poles
+
+Each of the three scalars is a ratio of polynomials in $s$ whose poles are
+real and not positive. For a Maxwell material, with $a=1/\tau$,
+
+$$
+\tilde\mu=\mu\,\frac{s}{s+a},\qquad
+\frac1{\tilde\mu}=\frac1\mu\Big(1+\frac as\Big),\qquad
+g(s)=2+(g_e-2)\,\frac{s}{s+1/\tau_2},\qquad
+\tau_2=\tau\,\frac{3K+4\mu}{3K},
+$$
+
+and in time these are $\mu\,e^{-t/\tau}$, the steady creep
+$(1+t/\tau)/\mu$ of a fluid, and $2+(g_e-2)\,e^{-t/\tau_2}$. A Burgers
+material has two poles in $\tilde\mu$ and two more in $g$.
+
+A solution built from such operators inherits their character: the response
+of a relaxing body to a step is a constant plus decaying exponentials. Which
+exponentials depends on the whole body and not only on its material. A plate
+over a substrate goes on relaxing for many times the substrate's own Maxwell
+time, and for longer the farther from the fault. Two cases differ in kind. With slip and displacements
+prescribed, the body relaxes to a finite state. With a traction prescribed
+on a fluid it never stops, the $1/s$ above, and its response has a term
+linear in time: a crack held at a fixed stress drop slips for ever.
+
+## Back to time
+
+The elastic solve gives $\tilde{\mathbf u}(s)$ at whatever $s$ is asked for.
+It is asked for at real, positive $s$, where the moduli are real and
+positive and each state is an ordinary elastic problem for the same solver.
+The points are laid out for the times wanted, $s=1/t$, log-spaced at three
+per decade and carried half a decade past each end:
+
+$$
+s_k=\frac{10^{\,1/2}}{t_{\min}}\;10^{-k/3},\qquad k=0,1,\dots,
+\quad\text{down to}\quad\frac{10^{-1/2}}{t_{\max}} .
+$$
+
+For times from 0.1 to 100 that is thirteen values, from $31.6$ to $0.0032$
+per Maxwell time. The elastic state, $s=\infty$, makes fourteen.
+
+Inverting a transform from its values on the real axis is ill-posed if
+nothing is known of the answer. Here its form is known, so it is fitted, with
+the relaxation times *fixed* at the reciprocals of the sample points,
+$\tau_j=1/s_j$ (the collocation of Schapery 1962):
+
+$$
+\tilde{\mathbf u}(\mathbf x,s)=\mathbf a_0(\mathbf x)
++\sum_j\mathbf a_j(\mathbf x)\,\frac{s}{s+1/\tau_j}
+\qquad\Longleftrightarrow\qquad
+\mathbf u(\mathbf x,t)=\mathbf a_0+\sum_j\mathbf a_j\,e^{-t/\tau_j}.
+$$
+
+With the poles fixed the fit is linear, and with as many terms as states it
+is a square system. Its matrix has no solution values in it,
+
+$$
+M_{k0}=1,\qquad M_{kj}=\frac{s_k}{s_k+1/\tau_j},
+$$
+
+the row of the elastic state being all ones. Write the fourteen solutions at
+a point as a vector $\tilde{\mathbf u}$ and the functions of time as
+$\mathbf e(t)=\big(1,\,e^{-t/\tau_1},\,\dots\big)$. Then
+$\mathbf a=M^{-1}\tilde{\mathbf u}$ and
+
+$$
+\mathbf u(t)=\mathbf w(t)\cdot\tilde{\mathbf u},\qquad
+\mathbf w(t)^{\mathsf T}=\mathbf e(t)^{\mathsf T}M^{-1}.
+$$
+
+A time is fourteen weights. They are the same for every unknown and every
+point, and for anything linear in the solution: the displacement of the
+surface, the slip of a fault that creeps, the stress at a point in the
+mantle. Three properties follow from the matrix alone.
+
+- At $t=0$ the weights select the elastic state and nothing else, because
+  $\mathbf e(0)$ is that state's row of $M$. The earthquake itself is
+  reproduced exactly.
+- The weights always sum to one, because a solution that does not depend on
+  $s$ is fitted by its constant.
+- The relaxed state is $\mathbf a_0$, the first row of $M^{-1}$; the velocity
+  is a second set of weights, $\dot{\mathbf e}(t)^{\mathsf T}M^{-1}$.
+
+A body that creeps is fitted with one more term, $c/s$ for $c\,t$, in place
+of the slowest exponential, which over the window is all but the same
+function.
+
+**How good it is.** Measured on transforms whose inverses are known exactly
+(one pole, two, a repeated pole, a creeping response), the worst error over
+three decades of time:
+
+| points per decade | solves | $u$ | $t\,\dot u$ |
+|---|---|---|---|
+| 2 | 9 | $4.4\times10^{-3}$ | $6.7\times10^{-2}$ |
+| 3 | 13 | $9.5\times10^{-4}$ | $1.2\times10^{-2}$ |
+| 4 | 17 | $4.2\times10^{-5}$ | $1.9\times10^{-3}$ |
+
+Three is used: the inversion then sits well under the error of the mesh. A
+velocity carries about 1&nbsp;%.
+
+**Where it holds.** Nothing constrains the fit at times shorter than the
+shortest $\tau_j$ or longer than the longest. A result is trusted inside the
+window the points were laid out for and not outside it, which is why no
+clock on this site runs past 100.
+
+**Why not a contour.** A transform can be inverted with no assumption about
+its form by sampling it on a contour in the complex plane. Each sample would
+then be an elastic problem with complex moduli, and the sum cancels at
+least as heavily as this one does. The contour is used here for what it is best at:
+the tests invert closed-form transforms on one, to thirty digits, and hold
+the real-axis fit to the result.
+
+## The weights of a time
+
+The weights are large and of both signs, and they cancel. Here they are for
+the models on this site, at the time on the slider. A state much slower
+than the time, one whose $1/s$ lies well beyond $t$, carries almost nothing.
+The rest alternate in sign, and each can be tens of times their sum, which
+is always one. How large they are depends on where the time falls among the
+sample points, and it grows through the window.
+
+<WeightsFigure />
+
+That cancellation is why a page is never given the fourteen solutions
+rounded: an error of rounding in each would be multiplied by the sum of the
+magnitudes, which passes 200 late in the window and is nearly four times
+that for a velocity. The [Examples](../examples/) page is given a few orthonormal
+combinations of the solutions instead, and for each time one row of numbers
+in which the weights have already been applied in double precision.
+
+## Earthquakes that repeat
+
+Let the same step of slip recur every $T$, for ever. At a time $t$ after the
+latest one, the relaxation of all of them is a sum over the past, and for
+each exponential of the fit that sum is geometric:
+
+$$
+\sum_{n\ge0}e^{-(t+nT)/\tau_j}=\frac{e^{-t/\tau_j}}{1-e^{-T/\tau_j}} .
+$$
+
+So a cycle costs nothing beyond the fit: it is another set of weights. The
+construction is that of Savage and Prescott (1978) for a strike-slip fault
+and of Thatcher and Rundle (1984) for a subduction zone, with the sum done
+in closed form.
+
+What geodesy measures between earthquakes is the velocity of the ground
+while the fault is locked. A fault locked between earthquakes of slip $b$ is
+the same fault slipping steadily at $V=b/T$, less the difference, and the
+difference is periodic. With $u(t)$ the response to a unit step, the
+velocity measured from steady slip, per unit $V$, is
+
+$$
+v(t)=T\sum_{n\ge0}\dot u(t+nT)\;-\;u(\infty),\qquad 0\lt t\lt T.
+$$
+
+Three things follow.
+
+**Its mean is elastic back slip.** Integrating the sum over one cycle
+integrates $\dot u$ over all time, which is $u(\infty)-u(0^+)$, so
+
+$$
+\frac1T\int_0^T v\,dt=-\,u(0^+).
+$$
+
+The back-slip model (Savage 1983) is the average of the cycle whatever
+relaxes. Relaxation only moves velocity between early and late.
+
+**It asks less of the window than a relaxed state does.** What the response
+does long after a period enters the sum and the limit alike and all but
+cancels. The window must hold a few periods, not a settled body.
+
+**It has a reference that uses no fit.** The train of earthquakes is
+periodic, so its response is a Fourier series, and the coefficient at
+$s_n=2\pi i\,n/T$ is the elastic solution at the moduli of $s_n$:
+
+$$
+v(t)=-u(0^+)+2\,\operatorname{Re}\sum_{n\ge1}\big[\tilde u(s_n)-u(0^+)\big]\,e^{s_nt}.
+$$
+
+On a layered reference, where a solution at imaginary $s$ is cheap, the
+fitted velocity agrees with that series to $4\times10^{-4}$ of its peak at
+$T=20\,\tau$.
+
+## Gravity
+
+In this section $w=\rho\,\mathrm g$ is the weight of a unit volume, so that
+$g$ keeps its meaning.
+
+Before it is deformed the body is at rest under its own weight, with a
+hydrostatic prestress: $\boldsymbol\sigma_0=-p_0\,\mathbf I$,
+$\nabla p_0=-w\,\hat{\mathbf z}$, with $\hat{\mathbf z}$ up. A displacement carries prestressed
+material with it, so there are two increments of stress to tell apart: the
+change in a particle, $\boldsymbol\tau^L$, and the change at a fixed point
+of space,
+
+$$
+\boldsymbol\tau=\boldsymbol\tau^L-w\,(\mathbf u\cdot\hat{\mathbf z})\,\mathbf I .
+$$
+
+A column lifted by $u_z$ puts at each point the material from $u_z$ deeper:
+more pressure at the point, none in any particle. With a uniform density in
+each region and no self-gravitation, equilibrium of the perturbation is
+
+$$
+\nabla\cdot\boldsymbol\tau+w\,(\nabla\cdot\mathbf u)\,\hat{\mathbf z}=\mathbf 0,
+$$
+
+the second term being the weight of material whose density the deformation
+has changed.
+
+Two things are then done, and both are exact for an incompressible
+material. The internal buoyancy $w\,(\nabla\cdot\mathbf u)\,\hat{\mathbf z}$
+is dropped, and Hooke's law is applied to $\boldsymbol\tau$. What is left
+inside every region is
+
+$$
+\nabla\cdot\big(\mathbf C:\boldsymbol\epsilon(\mathbf u)\big)=\mathbf 0,
+$$
+
+the equation the kernels already solve. Gravity has left the volume. For a
+compressible material the error is of relative order $wL/K$, with $L$ the
+scale of the deformation: 6&nbsp;% per 100&nbsp;km at $K=50$&nbsp;GPa.
+
+Where it went is the boundaries. What is continuous across a material
+surface is the traction of $\boldsymbol\tau^L$, so in terms of
+$\mathbf t=\boldsymbol\tau\,\mathbf n$:
+
+| surface | condition |
+|---|---|
+| the free surface, under an applied load $\bar{\mathbf t}$ | $\mathbf t=\bar{\mathbf t}-w\,(\mathbf u\cdot\hat{\mathbf z})\,\mathbf n$ |
+| an interface between regions 1 and 2 | $\mathbf t_2=\mathbf t_1-(w_2-w_1)\,(\mathbf u\cdot\hat{\mathbf z})\,\mathbf n$ |
+| a fault, inside one region | $\mathbf t$ continuous: no term |
+| the sides and base of the box | no term |
+
+A fault has no term because $\boldsymbol\tau$ is the stress at a point, and
+the two faces of a fault at one point of space see the same one. A wall has
+none because it is a cut and not a cliff: the rock beyond it, at the same
+density, loads it with exactly the term that would otherwise appear.
+
+So gravity is a traction proportional to the displacement, on the free
+surface and on every interface across which the density changes. In the
+equations it is one more block on columns that are already there, the
+kernel $\mathbf G^\varepsilon$ applied to $w$ times geometry times the
+displacement. The weight is not a modulus, so correspondence stands: a state
+under gravity is an elastic solve.
+
+It contains the classical results. A load of wavenumber $k$ on a half-space
+meets the stiffness
+
+$$
+w+\tilde\mu(s)\,g\,k ,
+$$
+
+whose two terms balance at the buoyancy wavenumber of Barbot and Fialko
+(2010). For an incompressible Maxwell half-space its one pole is at
+$\tau+2\eta k/w$: the relaxation time of a viscous half-space under gravity
+(Haskell 1935), plus the Maxwell time. And a substrate that has relaxed is
+hydrostatic, so the plate on it feels $w_p$ per unit deflection at its top
+and $w_s-w_p$ at its base, $w_s$ in all, which is flexural isostasy.
+
+One restriction comes with it. Where the heavier rock is on top, a body
+that relaxes has a mode that grows, and a fit made of decaying exponentials
+has nothing to answer it with. Such a model is refused.
+
+## The walls
+
+A boundary method built on full-space kernels has no half-space in it. The
+model is a box, and what its walls do is part of the answer. For a fault
+that cuts the plate it is most of the late answer: once the substrate lets
+go, the two sides of a megathrust converge as rigid blocks, and it is the
+walls that stop them.
+
+| megathrust 800&nbsp;km long, walls 800&nbsp;km away | fixed | free | window |
+|---|---|---|---|
+| horizontal, postseismic, at $\tau$ / $10\tau$ / $100\tau$ | 0.065 / 0.102 / 0.140 | 0.065 / 0.088 / 0.154 | 0.021 / 0.017 / 0.023 |
+| convergence of the two sides, over the reference's | 0.94 / 0.90 / 0.81 | 1.04 / 1.07 / 1.11 | 0.98 / 0.99 / 0.99 |
+
+Fixed walls hold the plate and free ones let it go too far; the two bracket
+the truth and neither is what the plate beyond a wall does. A spring on the
+wall does not mend it, because that plate is stiff early and slack late.
+
+**The window.** Each wall is given, as its displacement, the displacement
+that the model's own prescribed slip produces in an unbounded medium that
+has a solution of its own: a plate over a half-space. The box then solves
+only what that reference does not know, which is its interior and whatever
+is in it, and the reference carries the far field. The datum depends on the
+moduli, so it is evaluated at every state. It is a right-hand side; the
+operator does not change.
+
+**The reference** is a rectangular fault in a plate over a half-space, in
+three dimensions, under the same buoyancy. Transform horizontally. In the
+frame of a wavevector, with $\xi$ along it and $t$ across it, elasticity
+splits into a P-SV system for $(u_\xi,u_z)$ and an SH system for $u_t$,
+which buoyancy does not enter. Slip is an eigenstrain
+$\mathbf E=\operatorname{sym}(\mathbf b\otimes\mathbf n)$, and at its depth
+it is a jump in the fields that are otherwise continuous:
+
+$$
+[u_\xi]=2E_{\xi z},\qquad
+[u_z]=E_{zz}+\frac{\lambda\,(E_{\xi\xi}+E_{tt})}{\lambda+2\mu},\qquad
+[\tau_{\xi z}]=ik\,\frac{4\mu(\lambda+\mu)\,E_{\xi\xi}+2\mu\lambda\,E_{tt}}{\lambda+2\mu},
+$$
+
+$$
+[u_t]=2E_{tz},\qquad[\tau_{tz}]=2ik\mu\,E_{\xi t}.
+$$
+
+The fault is integrated along strike in closed form and down dip by
+quadrature, and cut where it crosses the interface, each part in the moduli
+of its own layer. At the surface the result is Okada's (1985) closed form
+for the half-space plus the transform of the smooth difference from it; at
+depth, where a wall needs it, the spectrum is tapered. It shares nothing
+with the boundary elements, which is what lets it also be what they are
+compared with.
+
+**What a window does not see.** It is exact for what its reference solves
+and blind to everything else: a slip that is solved and not prescribed, a
+slab. That part of the far field falls off with distance, so for it alone
+the size of the box is a parameter again.
+
+## Two meshes
+
+The elements are constant on each triangle. For strike slip that is enough.
+Dip slip over a relaxed substrate bends the plate, and the bending comes out
+short by an amount that is first order in three lengths at once: the
+elements of the plate's top, those of its base, and the mollification width
+of the base. Each is modest and all have one sign. On a 30&nbsp;km plate
+with elements of 10&nbsp;km on its top and 15&nbsp;km on its base, and a
+width of 1.5&nbsp;km, the trough behind a thrust is 12&nbsp;% shallow once
+the plate is afloat, and 6&nbsp;% with all three halved.
+
+An error that is first order in $h$ is $u_h=u+c\,h$ to leading order. Two
+meshes with the three lengths in one ratio $r$, coarse over fine, give two
+equations for $u$ and $c$, and
+
+$$
+u_{\text{limit}}=\frac{r\,u_{\text{fine}}-u_{\text{coarse}}}{r-1}.
+$$
+
+For the megathrust on this site, in a window 400&nbsp;km to its walls,
+against the reference in three dimensions:
+
+| misfit | top 10, base 15, width 1.5&nbsp;km | half of each | the limit |
+|---|---|---|---|
+| at the earthquake, horizontal and vertical | 0.007, 0.019 | 0.004, 0.009 | 0.001, 0.004 |
+| postseismic, at $\tau$ / $10\tau$ / $100\tau$ | 0.055 / 0.051 / 0.086 | 0.026 / 0.026 / 0.043 | 0.007 / 0.010 / 0.016 |
+| its vertical part | 0.199 / 0.163 / 0.172 | 0.095 / 0.083 / 0.085 | 0.026 / 0.031 / 0.032 |
+| velocity of the locked fault, $T=20\tau$, early / late | 0.036 / 0.018 | 0.017 / 0.010 | 0.005 / 0.004 |
+
+Every row halves with the mesh, which is what first order means, and the
+limit is what that leaves. It removes this error and no other, and it has a
+price: whatever the two meshes do *not* share is magnified by
+$(r+1)/(r-1)$, three for a ratio of two and five for 1.5. Where the second
+mesh cannot be made much finer than the first, the limit is not taken.
+
+## A fault that creeps
+
+So far slip was given. Let a fault instead be solved, and let it resist the
+*rate* at which it slips: one side drags the other with a shear traction
+$\eta_f\,\dot{\mathbf b}$. If nothing has slipped before the step, the
+transform of that is $\eta_f\,s\,\hat{\mathbf b}$, and for step data the
+state at $s$ has on that fault the condition
+
+$$
+\mathbf n\cdot\boldsymbol\sigma-\kappa(s)\,\mathbf b=\Delta\mathbf t,
+\qquad\kappa(s)=\eta_f\,s .
+$$
+
+The elastic traction of every source, the fault's own slip included, less a
+stiffness times that slip. That is an elastic problem like every other
+state, with the slip among its unknowns, so afterslip needs no time-stepper
+either. At $s=\infty$ the stiffness is infinite and the fault is locked: it
+does not slip at the instant of the earthquake. As $s\to0$ the stiffness
+vanishes and the fault ends where it carries no traction. In between, its
+slip is whatever the rest of the model loads it with.
+
+The law is stated as the shear zone it stands for, of width $h$ and of a
+material with Maxwell time $\tau_c$ at the modulus of the rock around it,
+so that $\eta_f=\mu\,\tau_c/h$: again a time and a ratio. A patch of size
+$L$ unloads in about $\tau_c\,L/h$. Friction that strengthens with rate is
+the same law. Linearised about a steady rate $V$,
+$\tau=\sigma_n\big[\mu_0+(a-b)\ln(V'/V)\big]$ has the slope
+$(a-b)\,\sigma_n/V$, which is $\eta_f$ (Marone and others 1991; Perfettini
+and Avouac 2004).
+
+It has an exact anchor. A penny-shaped crack whose faces drag with
+$\kappa_0/\sqrt{1-r^2/a^2}$ keeps the elliptical slip of the crack without
+drag, because that slip's traction is uniform, and its peak is
+$\Delta\tau/(k_E+\kappa_0)$ with $k_E$ the crack's own stiffness. In an
+elastic body that is one exponential with the time $\eta_0/k_E$. In a
+Maxwell body the crack's stiffness relaxes too, and the fault's creep and
+the body's are one transform. The solved moment is within 0.7&nbsp;% of it at
+every $s$ and at every time, which is the crack's own error in the elastic
+problem.
+
+## Stress, and the interior
+
+No unknown lives inside a region, but the field does. Once the boundaries
+are solved, the formula under [One elastic problem per
+state](#one-elastic-problem-per-state) gives the displacement at any
+interior point, and its gradient gives the strain. Both hold at every state,
+so the weights of a time apply to them as they do to the boundary:
+
+$$
+\boldsymbol\sigma(\mathbf x,t)=\mathbf w(t)\cdot\tilde{\boldsymbol\sigma}(\mathbf x),
+\qquad
+\tilde{\boldsymbol\sigma}_k=\mathbf C(s_k):\big(\nabla\tilde{\mathbf u}_k-\boldsymbol\epsilon^*\big).
+$$
+
+Each state's stress is formed with that state's moduli and has the
+eigenstress removed at those moduli. In time that makes the eigenstress
+hereditary: after a step of slip it decays with the shear modulus of the
+rock it is in, as it should, since it is a stress the material would have
+to hold.
+
+A quantity that is not linear in the stress is formed last. The deviatoric
+stress drawn on the sections is $\sqrt{3J_2}$ of the tensor at each time,
+never a combination of its values at the states.
+
+## What it is held to
+
+Each piece above is tested against something that shares nothing with it.
+
+| case | what it exercises | agreement |
+|---|---|---|
+| a dislocation in a relaxing full space | a fault inside the region that relaxes | kernels to $10^{-11}$ at every $\nu(s)$ |
+| a sphere in a relaxing host (Eshelby) | two regions, $\lambda$ live, two relaxation times | 1.6&nbsp;%, flat in $s$ |
+| torsion of a two-layer cylinder | an interface, a free wall, a fixed base | 5&nbsp;% on 847 elements, flat in $s$ |
+| a penny crack under a sustained stress drop | a solved fault that creeps for ever | 0.5&nbsp;% in moment |
+| layered shells on a rigid core, radial buoyancy | gravity, per $s$ and in time | within 2.6&nbsp;% |
+| the layered reference against half-space closed forms | the reference itself | $7\times10^{-5}$ on the walls of a box |
+| a megathrust through the plate, window and two meshes | everything at once | 1.6&nbsp;% in time, 0.5&nbsp;% through the cycle |
+
+In every solved case the answer in time carries the elastic problem's own
+spatial error and nothing more. The closed forms are inverted on a contour,
+which shares nothing with the real-axis fit.
+
+## Beyond linearity
+
+Everything above rests on the problem being linear and on the kind of each
+boundary condition staying fixed. A mantle that flows by a power law,
+friction that is not linearised, a fault that chooses when to slip: none of
+these has a transform that helps.
+
+For the boundary conditions there is a way through that keeps the volume
+empty, and it is a design, not something built. Multiplying by
+$s/(s+\beta)$ is, in time, a memory variable
+$m(t)=\int_0^te^{-\beta(t-t')}\,\dot x(t')\,dt'$, which obeys
+$\dot m=-\beta\,m+\dot x$ and updates in one line a step:
+
+$$
+m^n=e^{-\beta\Delta t}\,m^{n-1}+\psi\,(x^n-x^{n-1}),\qquad
+\psi=\frac{1-e^{-\beta\Delta t}}{\beta\,\Delta t}.
+$$
+
+Because every operator is geometry times a few such functions, the history
+of a region is a few vectors the size of its boundary unknowns. An implicit
+step is an elastic solve at effective moduli that lie between the unrelaxed
+and the relaxed ones, and one factorisation serves every step of the same
+length. A nonlinear *rheology* is another matter: its viscous strain is a
+field in the volume, and a method that has no volume has nowhere to keep it.
+
+## References
+
+Barbot, S., and Y. Fialko (2010), Fourier-domain Green's function for an
+elastic semi-infinite solid under gravity, with applications to earthquake
+and volcano deformation, *Geophys. J. Int.*, 182, 568.
+
+Cortez, R. (2001), The method of regularized Stokeslets, *SIAM J. Sci.
+Comput.*, 23, 1204.
+
+Fukahata, Y., and M. Matsu'ura (2006), Quasi-static internal deformation due
+to a dislocation source in a multilayered elastic/viscoelastic half-space
+and an equivalence theorem, *Geophys. J. Int.*, 166, 418.
+
+Haskell, N. A. (1935), The motion of a viscous fluid under a surface load,
+*Physics*, 6, 265.
+
+Lee, E. H. (1955), Stress analysis in visco-elastic bodies, *Q. Appl.
+Math.*, 13, 183.
+
+Marone, C. J., C. H. Scholz, and R. Bilham (1991), On the mechanics of
+earthquake afterslip, *J. Geophys. Res.*, 96, 8441.
+
+Meade, B. J. (2026), Three dimensional non-singular mollified elastic
+dislocation theory for extended width fault zones and inhomogeneous boundary
+element models, *arXiv*:2609.15601.
+
+Okada, Y. (1985), Surface deformation due to shear and tensile faults in a
+half-space, *Bull. Seismol. Soc. Am.*, 75, 1135.
+
+Perfettini, H., and J.-P. Avouac (2004), Postseismic relaxation driven by
+brittle creep, *J. Geophys. Res.*, 109, B02304.
+
+Savage, J. C. (1983), A dislocation model of strain accumulation and release
+at a subduction zone, *J. Geophys. Res.*, 88, 4984.
+
+Savage, J. C., and W. H. Prescott (1978), Asthenosphere readjustment and the
+earthquake cycle, *J. Geophys. Res.*, 83, 3369.
+
+Schapery, R. A. (1962), Approximate methods of transform inversion for
+viscoelastic stress analysis, *Proc. 4th U.S. Natl. Congr. Appl. Mech.*, 2,
+1075.
+
+Thatcher, W., and J. B. Rundle (1984), A viscoelastic coupling model for the
+cyclic deformation due to periodically repeated earthquakes at subduction
+zones, *J. Geophys. Res.*, 89, 7631.

@@ -67,6 +67,9 @@ export interface Profile {
   components: string[];
   curves: Curve[];
   misfit: Record<string, Record<string, (number | null)[]>>;
+  /** The finite Laplace points, largest first. A row of `weights` has one
+   *  entry for the elastic state and then one for each of these. */
+  s: number[];
   weights: Record<string, number[][]>;
 }
 

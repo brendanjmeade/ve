@@ -286,9 +286,10 @@ def profile(out: Out, spec: dict, study, s, periods) -> str:
                 m = np.sqrt(((a - b) ** 2).sum(axis=(1, 2))
                             / (b ** 2).sum(axis=(1, 2)))
             misfit[c["key"]][q] = num(m, 3)
+    # `s` names the columns of the weights: the elastic state, then these
     return out.json(f"{spec['key']}.profile.json", {
         "components": ["horizontal, across the trench", "vertical"],
-        "curves": curves, "misfit": misfit,
+        "curves": curves, "misfit": misfit, "s": num(s),
         "weights": {q: num(tb["w"]) for q, tb in weights.items()}})
 
 

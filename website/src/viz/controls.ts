@@ -1,33 +1,24 @@
 // Wiring for the Examples viewer: model, quantity, colour, the clock, and
 // the profile under it.
 //
-// The clock is a position in the quantity's table, fractional, so "play" is
-// that number advancing. Everything drawn -- the sheets, the colour bar's
-// label, the profile, the misfit -- is a function of (model, quantity,
-// scalar, position), and `apply` is the only place that calls them.
+// Everything drawn -- the sheets, the colour bar's label, the profile, the
+// misfit -- is a function of (model, quantity, scalar, the clock's position),
+// and `apply` is the only place that calls them. The clock is one `Clock`;
+// every element marked `data-timeline` gets a slider on it, so the scene and
+// the profile each carry one and move together.
 
 import { cssGradient } from "./colormaps";
-import { axisAt, fmt, Payload, type Model, type Quantity } from "./payload";
+import { fmt, Payload, type Model, type Quantity } from "./payload";
 import { ProfilePanel } from "./profile";
 import { SheetScene, type Scale } from "./scene";
+import { Clock, Timeline, when } from "./timeline";
 import { ModelView, type Choice } from "./view";
-
-const SWEEP_S = 10;            // seconds for "play" to cross the table once
 
 function quantityName(key: string, q: Quantity): string {
   if (key === "since") return "since the earthquake";
   if (key === "total") return "earthquake included";
   if (key === "rate") return "velocity";
   return `locked fault, earthquakes every ${fmt(q.period ?? 0)} τ`;
-}
-
-export function when(q: Quantity, pos: number): string {
-  const v = axisAt(q, pos);
-  if (q.axis === "phase") {
-    return `${(100 * v).toFixed(0)} % of the cycle, ` +
-           `${fmt(v * (q.period ?? 1))} τ after the last earthquake`;
-  }
-  return v <= 0 ? "the earthquake, t = 0⁺" : `t = ${fmt(v)} τ`;
 }
 
 export function facts(m: Model): string[] {
@@ -63,7 +54,12 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
 
   let key = payload.manifest.models[0].key;
   const choice: Choice = { quantity: "since", scalar: "z" };
-  let pos = 0, warp = 1, playing = false, last = 0, raf = 0;
+  let warp = 1;
+  const clock = new Clock(12, 1.5);
+  for (const host of root.querySelectorAll<HTMLElement>("[data-timeline]")) {
+    new Timeline(host, clock);
+  }
+  clock.on(() => apply());
   const shown: Record<string, boolean> = {};
   let elements = false, cut = false, first = true;
 
@@ -86,11 +82,8 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
   const modelSel = select("model", (v) => { key = v; void load(); });
   fill(modelSel, payload.manifest.models.map((m) => [m.key, m.label]), key);
   const quantitySel = select("quantity", (v) => {
-    const before = rows() - 1;
     choice.quantity = v;
-    pos = before > 0 ? pos / before * (rows() - 1) : 0;
-    clock.max = String(rows() - 1);
-    apply();
+    clock.setAxis(view.quantity(choice));       // keeps the time; redraws
   });
   const scalarSel = select("scalar", async (v) => {
     choice.scalar = v;
@@ -101,36 +94,12 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
     apply();
   });
 
-  const clock = q<HTMLInputElement>("[data-clock]");
-  clock.addEventListener("input", () => { pos = Number(clock.value); apply(); });
-  const play = q<HTMLButtonElement>("[data-play]");
-  play.addEventListener("click", () => {
-    playing = !playing;
-    play.textContent = playing ? "pause" : "play";
-    last = 0;
-    if (playing) raf = requestAnimationFrame(step); else cancelAnimationFrame(raf);
-  });
   const warpIn = q<HTMLInputElement>("[data-warp]");
   warpIn.addEventListener("input", () => { warp = Number(warpIn.value); apply(); });
   const elemIn = q<HTMLInputElement>("[data-elements]");
   elemIn.addEventListener("change", () => { elements = elemIn.checked; visible(); });
   const cutIn = q<HTMLInputElement>("[data-cut]");
   cutIn.addEventListener("change", () => { cut = cutIn.checked; visible(); });
-
-  const rows = () =>
-    view.model ? view.quantity(choice).at.length : 1;
-
-  function step(now: number) {
-    if (!playing) return;
-    const dt = last ? (now - last) / 1000 : 0;
-    last = now;
-    const top = rows() - 1;
-    pos += dt / SWEEP_S * top;
-    if (pos > top) pos = 0;
-    clock.value = String(pos);
-    apply();
-    raf = requestAnimationFrame(step);
-  }
 
   function visible() {
     for (const name of view.names) {
@@ -143,7 +112,12 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
   }
 
   // --- colour bars --------------------------------------------------------
+  // Rebuilt when what they say changes, not on every frame of the clock.
+  const drawn = new WeakMap<HTMLElement, string>();
   function bar(host: HTMLElement, s: Scale, label: string) {
+    const sig = `${s.map}|${s.lo}|${s.hi}|${label}`;
+    if (drawn.get(host) === sig) return;
+    drawn.set(host, sig);
     host.textContent = "";
     const strip = document.createElement("div");
     strip.className = "strip";
@@ -160,8 +134,8 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
   }
 
   function apply() {
-    if (!view.model) return;
-    const qn = view.quantity(choice);
+    if (!view.model || !clock.axis) return;
+    const qn = view.quantity(choice), pos = clock.pos;
     view.set(choice, pos, warp);
     const def = view.def(choice);
     const what = def.field === "sigma"
@@ -179,7 +153,6 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
         ? `slip rate on the creeping reach (${qn.unit})`
         : "slip on the creeping reach since the earthquake (of the slip)");
     }
-    q<HTMLElement>("[data-when]").textContent = when(qn, pos);
     const label = qn.label.charAt(0).toUpperCase() + qn.label.slice(1);
     profile.set(choice.quantity, pos,
                 `${label}, ${qn.unit}; ${when(qn, pos)}.`);
@@ -206,11 +179,11 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
       if (!names.includes(choice.quantity)) choice.quantity = names[0];
       fill(quantitySel, names.map((n) => [n, quantityName(n, m.quantities[n])]),
            choice.quantity);
-      // open on the last time, where there is the most to see
-      pos = first ? rows() - 1 : Math.min(pos, rows() - 1);
+      // open on the last time, where there is the most to see; after that a
+      // new model is shown at the time the last one was left at
+      const axis = view.quantity(choice);
+      clock.setAxis(axis, first ? axis.at.length - 1 : undefined);
       first = false;
-      clock.max = String(rows() - 1);
-      clock.value = String(pos);
 
       const boxes = q<HTMLElement>("[data-sheets]");
       boxes.textContent = "";
