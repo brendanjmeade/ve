@@ -3,8 +3,8 @@
 //
 // The hero and the Examples viewer both use this, so "what is drawn at time
 // t" is written once: for every sheet, one row of the quantity's table times
-// the field's modes; the scalar asked for goes to the colour, and the
-// displacement itself, exaggerated, moves the sheet.
+// the field's modes, and the scalar asked for goes to the colour. The sheets
+// themselves do not move (see scene.ts).
 
 import type { MapName } from "./colormaps";
 import {
@@ -39,7 +39,6 @@ interface Held { entry: FieldEntry; modes: Float32Array; at: Float32Array; }
 interface Loaded {
   sheet: Sheet;
   name: string;
-  warp: string | null;
   fields: Map<string, Held>;
 }
 
@@ -95,7 +94,7 @@ export class ModelView {
         held.set(f, { entry, modes: modes[i],
                       at: new Float32Array(sh.nodes * entry.components) });
       });
-      this.loaded.push({ sheet, name, warp: sh.warp, fields: held });
+      this.loaded.push({ sheet, name, fields: held });
     }
     this.scene.frame(m.box.lo, m.box.hi, m.view_depth ?? 150);
     for (const seg of Object.values(m.outlines)) this.scene.addLines(seg, PINK);
@@ -172,31 +171,23 @@ export class ModelView {
                  : { lo: -hi, hi, log: false, map: "rdbu_r" as MapName };
   }
 
-  /** Move every sheet to row `pos` of the chosen quantity. `warp` is the
-   *  exaggeration as a fraction of its default (1 = the largest
-   *  displacement of the quantity drawn 7 % of the box wide). */
-  set(c: Choice, pos: number, warp: number) {
+  /** Colour every sheet by row `pos` of the chosen quantity. A field is
+   *  combined only where it is the one being drawn. */
+  set(c: Choice, pos: number) {
     const d = this.def(c);
     const comp = { x: 0, y: 1, z: 2 }[d.key as "x" | "y" | "z"];
-    const factor = warp * 0.07 * this.scene.size.x
-      / this.limit("u", c.quantity, "max");
     const scale = this.scale(c), slip = this.slipScale(c);
     for (const l of this.loaded) {
       const u = l.fields.get("u"), s = l.fields.get("slip");
       const sig = l.fields.get("sigma");
       const value = l.sheet.value;
-      if (u) {
-        combine(u.modes, rowAt(u.entry.rows[c.quantity], pos), u.at);
-        if (l.warp === "u") l.sheet.disp.set(u.at);
-      }
-      l.sheet.setWarp(u && l.warp === "u" ? factor : 0);
       if (s && slip) {
         combine(s.modes, rowAt(s.entry.rows[c.quantity], pos), s.at);
         value.set(s.at);
         l.sheet.setScale(slip);
         l.sheet.setPlain(false);
       } else if (d.field === "u" && u) {
-        const a = u.at;
+        const a = combine(u.modes, rowAt(u.entry.rows[c.quantity], pos), u.at);
         if (comp === undefined) {
           for (let i = 0, j = 0; i < value.length; i++, j += 3) {
             value[i] = Math.hypot(a[j], a[j + 1], a[j + 2]);

@@ -20,7 +20,12 @@ export function when(q: Quantity, pos: number): string {
     return `${(100 * v).toFixed(0)} % of the cycle, ` +
            `${fmt(v * (q.period ?? 1))} τ after the last earthquake`;
   }
-  return v <= 0 ? "the earthquake, t = 0⁺" : `t = ${fmt(v)} τ`;
+  if (v <= 0) return "the earthquake, t = 0⁺";
+  // Between the earthquake and the first time of the fit's window nothing
+  // was fitted: what is drawn there is a blend of the two, and is not given
+  // a time it has no claim to.
+  if (q.at[0] <= 0 && pos < 1) return `before t = ${fmt(q.at[1])} τ, where the fit begins`;
+  return `t = ${fmt(v)} τ`;
 }
 
 /** The fractional row at which a table's axis has the value `v`: the inverse

@@ -59,6 +59,15 @@ MODELS = (
      "blurb": "A thrust through the 30 km plate, 200 km long, with the "
               "footwall plate continued down dip to 150 km as an elastic slab "
               "in the relaxing mantle."},
+    {"key": "burgers", "label": "megathrust, Burgers substrate",
+     "study": "e351", "run": {"tau_K": 0.1},
+     "curves": (("model", "Burgers substrate", {"tau_K": 0.1}, None),
+                ("other", "Maxwell substrate", {"tau_K": 0.0}, None)),
+     "reference": ("layered reference, Burgers", {"tau_K": 0.1}),
+     "blurb": "The first model again, on a substrate that relaxes twice: a "
+              "Burgers material, whose transient element gives up half its "
+              "shear modulus within a tenth of a Maxwell time before the "
+              "steady flow takes the rest."},
 )
 
 QUANTITY = {
@@ -133,14 +142,13 @@ def quantities(s, periods) -> dict:
 def limits(field: np.ndarray) -> dict:
     """Colour limits of one quantity, fixed across its times: for each
     scalar a viewer can draw, the value 99.5 % of the nodes stay under at
-    every time, and the largest magnitude, which sets the warp."""
+    every time."""
     def hi(a):
         return float(np.percentile(np.abs(a).max(axis=0), 99.5))
 
     c = field.shape[-1]
     if c == 1:
-        return {"value": hi(field[..., 0]),
-                "max": float(np.abs(field).max())}
+        return {"value": hi(field[..., 0])}
     if c == 6:
         # von Mises of the tensor at each time, never a difference of two
         xx, yy, zz, xy, yz, xz = np.moveaxis(field, -1, 0)
@@ -148,11 +156,10 @@ def limits(field: np.ndarray) -> dict:
                      + 3.0 * (xy ** 2 + yz ** 2 + xz ** 2))
         peak = vm.max(axis=0)
         return {"von_mises": float(np.percentile(peak, 99.5)),
-                "von_mises_lo": float(np.percentile(peak, 2.0)),
-                "max": float(vm.max())}
+                "von_mises_lo": float(np.percentile(peak, 2.0))}
     mag = np.linalg.norm(field, axis=-1)
     return {"x": hi(field[..., 0]), "y": hi(field[..., 1]),
-            "z": hi(field[..., 2]), "mag": hi(mag), "max": float(mag.max())}
+            "z": hi(field[..., 2]), "mag": hi(mag)}
 
 
 def encode(out: Out, name: str, stack: np.ndarray, s, periods,
@@ -192,11 +199,9 @@ def sheet(out: Out, key: str, name: str, run, s, stack, faults, periods,
         at = np.stack([A @ c for c in creep])[..., None]
         entry["fields"]["slip"] = encode(out, f"{key}.{name}.slip", at, s,
                                          periods)
-        entry["warp"] = None
     else:
         at = np.stack([A @ u for u in stack[f"u:{name}"]]) / slip
         entry["fields"]["u"] = encode(out, f"{key}.{name}.u", at, s, periods)
-        entry["warp"] = "u"
     return entry
 
 
@@ -249,8 +254,7 @@ def section(out: Out, key: str, run, s, vol: pathlib.Path, periods,
                         np.stack(u)[:, keep] / slip, s, periods),
             "sigma": encode(out, f"{key}.section.sigma",
                             np.stack(sig)[:, keep] / slip, s, periods,
-                            STRESS_UNIT)},
-        "warp": "u"}
+                            STRESS_UNIT)}}
 
 
 def profile(out: Out, spec: dict, study, s, periods) -> str:
@@ -350,6 +354,7 @@ def model(out: Out, spec: dict, runs: pathlib.Path) -> dict:
             "depth": -gp["z_bottom"], "slab_depth": gp.get("slab_depth", 0.0),
             "sides": mp.get("sides"), "lower": mp.get("lower", "slip"),
             "density": (res["model"].get("gravity") or {}).get("density"),
+            "rheology": res["spec"]["laplace"]["rheology"],
             "creep": res["spec"]["laplace"].get("faults") or None},
         "box": {"lo": num(lo, 6), "hi": num(hi, 6)},
         "window": [float(f"{t0:.6g}"), float(f"{t1:.6g}")],

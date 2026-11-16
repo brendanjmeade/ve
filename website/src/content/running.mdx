@@ -1,4 +1,4 @@
-## The three models
+## The models
 
 Every model on this site is one study of [mbem](https://github.com/brendanjmeade/mbem),
 run from one config with different options. A study is a folder of runs; a
@@ -43,9 +43,25 @@ python -m mbem run configs/plate_substrate.py \
     --set t_max=100 --sweep slab_depth=0,150
 ```
 
+A Burgers substrate against a Maxwell one, on the first model's finer mesh.
+`tau_K` is the transient time in Maxwell times, and the Kelvin spring is the
+shear modulus unless `kelvin` says otherwise. The window is carried down to
+0.02 so that it holds the transient, which makes seventeen states:
+
+```bash
+python -m mbem run configs/plate_substrate.py \
+    --set dip=20 --set rake=90 --set depth=45 \
+    --set rho_plate=2700 --set rho_substrate=3300 \
+    --set edge_near=10 --set near_field_radius=200 \
+    --set fault_half_len=150 --set half_x=400 --set sides=window \
+    --set t_max=100 --set t_min=0.02 --set refine=2 --sweep tau_K=0.1,0
+```
+
 The finer megathrust is the large one: 219,315 unknowns, fourteen states,
-39 minutes on a 48-core machine with the block-compressed operator. The
-others are smaller.
+39 minutes on a 48-core machine with the block-compressed operator when
+three studies shared it. The Burgers run is the same mesh at seventeen
+states and took 21 minutes with the machine to itself. The others are
+smaller.
 
 <div class="note">
 These options (<code>sides=window</code>, <code>lower=creep</code>,
@@ -85,7 +101,7 @@ python -m mbem sample runs/<megathrust-study>/02-2.0 \
 ```
 
 That is the vertical plane at mid-strike: displacement and elastic stress at
-20,000 points, 4 km apart, at each of the fourteen states with that state's
+20,000 points, 4 km apart, at each of the run's states with that state's
 moduli and that state's walls. It took two to three minutes a state on 22
 threads.
 The sections on the Examples page are these, cut off at 180 km depth.
@@ -96,15 +112,16 @@ The sections on the Examples page are these, cut off at 180 km depth.
 python website/scripts/make_payload.py --runs ~/mbem/runs
 ```
 
-reads the three studies and their sections and writes `website/public/data/`,
+reads the four studies and their sections and writes `website/public/data/`,
 fetched a model and a field at a time. For each surface or section it writes
 a mesh and, for each field on it,
 
-- **modes**: an orthonormal basis of the fourteen solutions, float32, with
-  the ones below 10<sup>&minus;7</sup> of the largest dropped (ten to twelve
-  remain); and
+- **modes**: an orthonormal basis of the run's fourteen or seventeen
+  solutions, float32, with the ones below 10<sup>&minus;7</sup> of the
+  largest dropped (ten to fourteen remain for a displacement, and nearly all
+  of them for a stress); and
 - **tables**: for every quantity of time, the weights already applied, one
-  row of ten to twelve numbers per time.
+  short row of numbers per time.
 
 The browser multiplies one row into the modes. The rounding that would have
 been multiplied by 200 never happens, and the Laplace inversion is stated in

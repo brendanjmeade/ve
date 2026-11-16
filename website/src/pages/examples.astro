@@ -4,7 +4,7 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
 ---
 <Base
   title="ve — Examples"
-  description="Move the clock through stored viscoelastic boundary element solutions: a megathrust, its afterslip and a subducting slab, against a layered reference."
+  description="Move the clock through stored viscoelastic boundary element solutions: a megathrust, its afterslip, a subducting slab and a Burgers substrate, against a layered reference."
   current="examples"
 >
   <Fragment slot="sidebar">
@@ -18,7 +18,9 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     <div class="note">
       <b>Units.</b> Time is in Maxwell times of the substrate,
       &tau;&nbsp;=&nbsp;&eta;/&mu;: about ten years for
-      10<sup>19</sup>&nbsp;Pa&nbsp;s and 30&nbsp;GPa. Displacement is a
+      10<sup>19</sup>&nbsp;Pa&nbsp;s and 30&nbsp;GPa. For the Burgers
+      substrate &eta; is the steady viscosity, so its clock is the Maxwell
+      models' own. Displacement is a
       fraction of the slip, and the velocity of a locked fault a fraction of
       the slip rate, measured from the fault slipping steadily.
     </div>
@@ -48,9 +50,6 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
       <span data-sheets class="sheets"></span>
       <label><input data-elements type="checkbox" /><span>elements</span></label>
       <label><input data-cut type="checkbox" /><span>cut away the near half</span></label>
-      <label><span>Exaggeration</span>
-        <input data-warp type="range" min="0" max="2.5" step="0.05" value="1"
-               aria-label="exaggeration of the displacement" /></label>
     </div>
     <p data-status class="status">loading&hellip;</p>
 
@@ -63,10 +62,14 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     <b>The slider is time.</b> Drag it, or press play, to move every sheet
     and the profile from the earthquake to 100 Maxwell times; the two sliders
     are one clock. It is logarithmic in time, so each decade has the same
-    length, and its first stop is the earthquake itself. Pink outlines the
-    fault. Every sheet is coloured by the quantity chosen and displaced by
-    the motion, exaggerated; the colour scale is fixed across time, so a pale
-    early frame is a small early motion.
+    length, and its first stop is the earthquake itself. Between that stop
+    and the first time the solves were laid out for (0.1 Maxwell times, or
+    0.02 for the Burgers model) nothing was fitted, and the picture there is
+    only a blend of the two. Pink outlines the
+    fault. Every sheet is coloured by the quantity chosen and drawn where it
+    is, to scale: nothing is exaggerated, and the motion is in the colour
+    alone. The colour scale is fixed across time, so a pale early frame is a
+    small early motion.
     <b>Deviatoric stress</b> is the size of the deviatoric part of the
     elastic stress, on a log scale over three decades; it lives in the
     volume, so only the section carries it and the other sheets are drawn

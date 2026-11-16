@@ -60,7 +60,7 @@ export async function startHero(el: HTMLElement, bar: HTMLElement,
       angle = block ? -1.25 + 0.4 * Math.sin((now - t0) / 9000) : angle + 0.0009;
       scene.place(angle, block ? 0.36 : 0.5);
     }
-    if (moved) { view.set(choice, clock.pos, 1); moved = false; }
+    if (moved) { view.set(choice, clock.pos); moved = false; }
     else if (idle) scene.render();
     requestAnimationFrame(tick);
   };

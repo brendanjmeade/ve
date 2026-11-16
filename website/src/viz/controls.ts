@@ -23,9 +23,14 @@ function quantityName(key: string, q: Quantity): string {
 
 export function facts(m: Model): string[] {
   const n = m.numbers, int = (v: number) => Math.round(v).toLocaleString("en-US");
+  const sub = n.rheology?.substrate;
   const out = [
     `${int(n.unknowns)} unknowns on ${int(n.elements)} boundary elements, ` +
     `and no element anywhere else.`,
+    ...(sub?.kind === "burgers" ? [
+      `A Burgers substrate: a transient with time ${fmt(sub.tau_K)} Maxwell ` +
+      `times and a Kelvin spring ${fmt(sub.kelvin)} × the shear modulus, in ` +
+      `series with the steady flow that sets the clock.`] : []),
     `${n.states} elastic solves, one per Laplace state; times from ` +
     `${fmt(m.window[0])} to ${fmt(m.window[1])} Maxwell times.`,
     `A box ${int(2 * n.half_x)} km square and ${int(n.depth)} km deep` +
@@ -54,7 +59,6 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
 
   let key = payload.manifest.models[0].key;
   const choice: Choice = { quantity: "since", scalar: "z" };
-  let warp = 1;
   const clock = new Clock(12, 1.5);
   for (const host of root.querySelectorAll<HTMLElement>("[data-timeline]")) {
     new Timeline(host, clock);
@@ -94,8 +98,6 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
     apply();
   });
 
-  const warpIn = q<HTMLInputElement>("[data-warp]");
-  warpIn.addEventListener("input", () => { warp = Number(warpIn.value); apply(); });
   const elemIn = q<HTMLInputElement>("[data-elements]");
   elemIn.addEventListener("change", () => { elements = elemIn.checked; visible(); });
   const cutIn = q<HTMLInputElement>("[data-cut]");
@@ -136,7 +138,7 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
   function apply() {
     if (!view.model || !clock.axis) return;
     const qn = view.quantity(choice), pos = clock.pos;
-    view.set(choice, pos, warp);
+    view.set(choice, pos);
     const def = view.def(choice);
     const what = def.field === "sigma"
       ? `${def.label}: ${quantityName(choice.quantity, qn)}`

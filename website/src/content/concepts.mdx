@@ -184,6 +184,38 @@ walls do not know about the slab: between a 500 and an 800&nbsp;km box the
 horizontal agrees to 2&nbsp;%, but the vertical at 100 relaxation times
 differs by 31&nbsp;%.
 
+## A substrate that relaxes twice
+
+Rock under a plate does not have one viscosity. In the first months after an
+earthquake it gives way faster than it does over the decades that follow,
+and a Maxwell material, with its one relaxation time, cannot do both. A
+Burgers material can. It has a transient element that yields quickly and by
+a limited amount, in series with the steady flow. In the model here the
+transient takes half of the shear modulus in a twentieth of a Maxwell time,
+and what is left then relaxes about twice as slowly as a Maxwell material
+with the same viscosity would.
+
+Nothing in the method changes. A Burgers substrate is a different function
+of $s$ handed to the same elastic solve, and both ends are the Maxwell
+model's own: the earthquake, and the state long after everything has
+relaxed. What changes is the road between them, and the window: the solves
+start at 0.02 Maxwell times so that the fit holds the transient, and there
+are seventeen.
+
+After the same earthquake the two substrates part at once. At a tenth of a
+Maxwell time, a year if the Maxwell time is ten, the ground over the Burgers
+substrate has moved six and a half times as far as over the Maxwell one, and
+at one Maxwell time 1.6 times. By six the Maxwell model has caught up. From
+there the Burgers model is slightly the one behind, by 1.6&nbsp;% at most,
+and by a hundred the two are the same. A fault locked between earthquakes
+every twenty Maxwell times moves differently by 27&nbsp;% early in its cycle
+and by 1&nbsp;% for the rest of it.
+
+Against the layered reference with the same Burgers substrate the model is
+within 2.8&nbsp;% through the transient and out to ten Maxwell times, and
+4.3&nbsp;% at a hundred. That is what its Maxwell twin on the same mesh
+gives. The [Examples](../examples/) profile draws the two together.
+
 ## Inside the volume
 
 No unknown lives inside the plate or the mantle, but the field does. Once the
@@ -208,5 +240,5 @@ account.
 Everything on this site is linear. A power-law mantle, rate-and-state
 friction and a fault that chooses when to slip all need a time-stepper, which
 is designed and not built. Slip is uniform on each rupture. The substrate is
-a Maxwell material with one relaxation time; a Burgers material is
-implemented and not shown.
+a Maxwell or a Burgers material, the same everywhere below the plate: no
+layering of viscosity and no weak zone.

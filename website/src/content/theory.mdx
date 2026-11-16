@@ -1,4 +1,5 @@
 import WeightsFigure from "../components/WeightsFigure.astro";
+import RelaxationFigure from "../components/RelaxationFigure.astro";
 
 ## The problem
 
@@ -66,16 +67,9 @@ It is a fluid. Held at a fixed strain it forgets its stress; held at a fixed
 stress it creeps for ever.
 
 **Burgers.** A Maxwell element in series with a Kelvin element, a spring
-$\mu_K$ beside a dashpot $\eta_K$. Under a step of stress it strains at once,
-then by a transient that saturates in a time $\tau_K=\eta_K/\mu_K$, then
-steadily:
-
-$$
-J(t)=\frac1\mu+\frac{t}{\mu\,\tau_M}+\frac{1-e^{-t/\tau_K}}{\mu_K}.
-$$
-
-The transient takes the modulus from $\mu$ to $\mu\mu_K/(\mu+\mu_K)$ and the
-steady phase takes it to zero.
+$\mu_K$ beside a dashpot $\eta_K$. It relaxes twice: by a transient that is
+over in a time of order $\tau_K=\eta_K/\mu_K$, then steadily. It has [a
+section of its own](#a-burgers-material) below.
 
 A rheology is stated in relaxation *times* and *ratios* of moduli, never in
 viscosities: a viscosity only ever appears as $\eta/\mu$. So time has no unit
@@ -406,6 +400,132 @@ that for a velocity. The [Examples](../examples/) page is given a few orthonorma
 combinations of the solutions instead, and for each time one row of numbers
 in which the weights have already been applied in double precision.
 
+## A Burgers material
+
+A Maxwell material has one way to relax. Rock has at least two: a fast
+transient, and the steady flow behind it. The Burgers material is the
+simplest that has both. A Maxwell element, spring $\mu$ and dashpot
+$\eta_M$, is in series with a Kelvin element, a spring $\mu_K$ beside a
+dashpot $\eta_K$. In series the deviatoric stress $\boldsymbol\sigma'$ is
+shared and the strains add:
+
+$$
+\operatorname{dev}\boldsymbol\epsilon=\boldsymbol\epsilon_M+\boldsymbol\epsilon_K,\qquad
+\dot{\boldsymbol\epsilon}_M=\frac{\dot{\boldsymbol\sigma}'}{2\mu}+\frac{\boldsymbol\sigma'}{2\eta_M},\qquad
+\boldsymbol\sigma'=2\mu_K\,\boldsymbol\epsilon_K+2\eta_K\,\dot{\boldsymbol\epsilon}_K .
+$$
+
+Transform each, with nothing strained before $t=0$, and add the strains.
+What multiplies the stress is the reciprocal of the operational modulus,
+
+$$
+\frac1{\tilde\mu(s)}=\frac1\mu+\frac1{\eta_M\,s}+\frac1{\mu_K+\eta_K\,s}:
+$$
+
+the compliances of the spring, the dashpot and the Kelvin element, added.
+Under a step of stress that is the creep
+
+$$
+J(t)=\frac1\mu+\frac{t}{\eta_M}+\frac{1-e^{-t/\tau_K}}{\mu_K},
+$$
+
+an instant strain, a steady flow, and a transient that saturates.
+
+**Two times and a ratio.** The material has three numbers beyond its
+unrelaxed modulus. They are stated as $\tau_M=\eta_M/\mu$, the steady time;
+$\tau_K=\eta_K/\mu_K$, the transient one; and $k=\mu_K/\mu$. Then
+
+$$
+\frac{\tilde\mu(s)}{\mu}
+=\left[\,1+\frac1{\tau_M\,s}+\frac1{k\,(1+\tau_K\,s)}\right]^{-1}
+=\frac{k\,\tau_M\,s\,(1+\tau_K\,s)}
+{k\,\tau_M\tau_K\,s^2+\big(k\,\tau_M+k\,\tau_K+\tau_M\big)\,s+k}.
+$$
+
+Time is measured in $\tau_M$ throughout, so a Burgers model and a Maxwell
+one on the same clock have the same steady viscosity.
+
+**It is two Maxwell materials side by side.** The denominator is a quadratic
+with two real, negative roots, $-1/\tau_1$ and $-1/\tau_2$, so the modulus
+splits into two terms of the Maxwell kind,
+
+$$
+\tilde\mu(s)=\mu\left[A_1\,\frac{s}{s+1/\tau_1}+A_2\,\frac{s}{s+1/\tau_2}\right],
+\qquad
+\mu(t)=\mu\left[A_1\,e^{-t/\tau_1}+A_2\,e^{-t/\tau_2}\right],
+\qquad A_1+A_2=1 .
+$$
+
+When the transient is much the faster, $\tau_K\ll\tau_M$,
+
+$$
+\tau_1\approx\tau_K\,\frac{k}{1+k},\quad A_1\approx\frac1{1+k};
+\qquad
+\tau_2\approx\tau_M\,\frac{1+k}{k},\quad A_2\approx\frac{k}{1+k}.
+$$
+
+The first branch is the transient: a fraction $1/(1+k)$ of the modulus, gone
+in less than $\tau_K$. The second is *slower* than the Maxwell time, by
+$(1+k)/k$, because what the transient leaves is a softer spring,
+$\mu k/(1+k)$, in front of the same dashpot. So a Burgers material held at a
+fixed strain gives up stress sooner than a Maxwell material at first and
+later than it afterwards. Held at a fixed stress it is ahead throughout, by
+the Kelvin element's strain. A fault that slips and stays slipped loads the
+rock around it somewhere between the two, and which it is nearer is a matter
+for the solve.
+
+For the model on this site, $k=1$ and $\tau_K=0.1\,\tau_M$: the two times
+are $0.049$ and $2.05$ Maxwell times, and the two fractions $0.525$ and
+$0.475$.
+
+<RelaxationFigure />
+
+**What it asks of the method.** Of the solver, nothing. A state is an
+elastic solve at $\tilde\mu(s)$, and only the function is different. At
+$s=\infty$ the modulus is $\mu$ and at $s\to0$ it is zero, as for a Maxwell
+material, so the earthquake and the fully relaxed state are the Maxwell
+model's own. A Burgers substrate changes the path between two ends that it
+leaves alone. Poisson's ratio has two poles more, from
+$3K+4\tilde\mu(s)=0$.
+
+Of the window it asks one thing. A fit is trusted only inside the window its
+points were laid out for, and the transient is over in a few $\tau_K$. So
+the window is carried below it, from $0.02$ instead of $0.1$, which is three
+more sample points: sixteen, and the elastic state makes seventeen.
+
+The fit is *not* told the material's two times. Its own relaxation times
+are fixed at three per decade whatever relaxes, and a body's response is a
+sum over many more exponentials than its material has. On transforms with
+two poles the fit holds as it does with one (the table under [Back to
+time](#back-to-time)).
+
+**What it does to a megathrust.** The megathrust of this site again, on its
+finer mesh, over a Burgers substrate and over a Maxwell one, each solved at
+the same seventeen states. At the earthquake the two are one solve. After
+it, the displacement since the earthquake at mid-strike, Burgers over
+Maxwell (rms over the profile, both components):
+
+| $t/\tau_M$ | 0.03 | 0.1 | 0.3 | 1 | 3 | 10 | 30 | 100 |
+|---|---|---|---|---|---|---|---|---|
+| Burgers over Maxwell | 9.2 | 6.5 | 3.4 | 1.58 | 1.09 | 0.985 | 0.996 | 1.000 |
+
+At a tenth of a Maxwell time the ground over the Burgers substrate has moved
+six and a half times as far, as far as the Maxwell model has by $0.7$. The
+lead is gone at $6\,\tau_M$. From there the Burgers model is the one behind,
+by 1.6&nbsp;% at most, near $11\,\tau_M$, and by a hundred the two are the
+same. So a megathrust loads its substrate much more nearly as a held stress
+than as a held strain: the transient shows almost wholly as a head start.
+A fault locked between earthquakes every $20\,\tau_M$ moves differently by
+27&nbsp;% a twentieth of the way through its cycle and by 1&nbsp;% from the
+middle of it on.
+
+Against the layered reference with the same Burgers substrate, the model's
+postseismic displacement is within 2.5 to 2.8&nbsp;% from $0.03$ to
+$10\,\tau_M$, the transient included, and within 4.3&nbsp;% at a hundred.
+Its Maxwell twin on the same mesh gives 2.5 to 2.8&nbsp;% and 4.3&nbsp;%: the
+transient costs the method nothing. The ratios in the table are the model's
+and the reference's alike, to 0.2&nbsp;%.
+
 ## Earthquakes that repeat
 
 Let the same step of slip recur every $T$, for ever. At a time $t$ after the
@@ -705,6 +825,7 @@ Each piece above is tested against something that shares nothing with it.
 | a sphere in a relaxing host (Eshelby) | two regions, $\lambda$ live, two relaxation times | 1.6&nbsp;%, flat in $s$ |
 | torsion of a two-layer cylinder | an interface, a free wall, a fixed base | 5&nbsp;% on 847 elements, flat in $s$ |
 | a penny crack under a sustained stress drop | a solved fault that creeps for ever | 0.5&nbsp;% in moment |
+| a strike-slip fault in a plate over a Burgers substrate | the transient, and a window that reaches below it | within 3&nbsp;% in the largest box, inside the transient and after it |
 | layered shells on a rigid core, radial buoyancy | gravity, per $s$ and in time | within 2.6&nbsp;% |
 | the layered reference against half-space closed forms | the reference itself | $7\times10^{-5}$ on the walls of a box |
 | a megathrust through the plate, window and two meshes | everything at once | 1.6&nbsp;% in time, 0.5&nbsp;% through the cycle |

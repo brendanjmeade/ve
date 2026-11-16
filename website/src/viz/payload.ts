@@ -29,7 +29,6 @@ export interface SheetEntry {
   elements: number;
   mesh: { nodes: ArrayRef; triangles: ArrayRef };
   fields: Record<string, FieldEntry>;
-  warp: string | null;
 }
 
 export interface Quantity {

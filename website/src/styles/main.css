@@ -267,12 +267,16 @@ button:disabled { opacity: .5; cursor: default; }
 .main th { font-weight: 600; border-bottom-color: var(--fg-faint); }
 .main td .katex, .main th .katex { font-size: 1em; }
 
-.weights { margin: 20px 0 24px; }
-.weights .chart svg { display: block; width: 100%; height: auto; }
-.weights svg text { font-family: var(--font); fill: var(--fg-dim); }
-.weights svg .tick { font-size: 11px; font-variant-numeric: tabular-nums; }
-.weights svg .lab { font-size: 12px; }
-.weights .note-line { font-size: 13px; color: var(--fg-dim); margin: 4px 0 0; font-variant-numeric: tabular-nums; }
+/* A chart in prose, under its own slider (Theory). */
+.plot { margin: 20px 0 24px; }
+.plot .chart svg { display: block; width: 100%; height: auto; }
+.plot svg text { font-family: var(--font); fill: var(--fg-dim); }
+.plot svg .tick { font-size: 11px; font-variant-numeric: tabular-nums; }
+.plot svg .lab { font-size: 12px; }
+.plot .note-line { font-size: 13px; color: var(--fg-dim); margin: 4px 0 0; font-variant-numeric: tabular-nums; }
+.plot .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; }
+.plot .legend .item { display: flex; align-items: center; gap: 6px; }
+.plot .legend .swatch { display: inline-block; width: 18px; border-top: 2px solid; }
 
 /* In one column the main block must take the column's width, not its
    content's: a code block or a displayed equation is wider than a phone, and

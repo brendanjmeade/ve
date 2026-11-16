@@ -1,0 +1,24 @@
+---
+// A Maxwell and a Burgers material letting go of a stress, under a slider:
+// the Theory page's figure for the Burgers section.
+---
+<figure class="plot" id="relaxation">
+  <div class="legend">
+    <span class="item"><span class="swatch" style="border-top-color:#2a78d6"></span><span>Burgers, as in the model</span></span>
+    <span class="item"><span class="swatch" style="border-top-color:#eb6834"></span><span>Maxwell, same steady viscosity</span></span>
+  </div>
+  <div data-timeline></div>
+  <div data-chart class="chart"></div>
+  <p data-note class="note-line">&nbsp;</p>
+  <figcaption>
+    <b>Two materials letting go.</b> Each is strained by a step and held; the
+    curves are the fraction of the stress it still carries. The Burgers
+    material drops by its transient at once, then crosses the Maxwell
+    material and outlasts it.
+  </figcaption>
+</figure>
+
+<script>
+  import { startRelaxation } from "../viz/relaxation";
+  startRelaxation(document.getElementById("relaxation")!, import.meta.env.BASE_URL);
+</script>

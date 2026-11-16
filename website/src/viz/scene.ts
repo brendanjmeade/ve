@@ -1,13 +1,17 @@
 // Sheets in a rotatable 3-D scene: the free surface, the base of the plate,
 // a fault, a section through the volume.
 //
-// A sheet is a triangle mesh with two things at its nodes that change with
-// time: a scalar, which the fragment shader turns into a colour, and a
-// displacement, which the vertex shader adds to the node, exaggerated. Both
-// are plain vertex attributes written from the CPU each time the clock
-// moves, so there is no float texture anywhere -- a float texture cannot be
-// linearly filtered on about half of iOS devices and fails as a black
-// surface, not as an error -- and the rasteriser does the interpolation.
+// A sheet is a triangle mesh with one thing at its nodes that changes with
+// time: a scalar, which the fragment shader turns into a colour. It is a
+// plain vertex attribute written from the CPU each time the clock moves, so
+// there is no float texture anywhere -- a float texture cannot be linearly
+// filtered on about half of iOS devices and fails as a black surface, not as
+// an error -- and the rasteriser does the interpolation.
+//
+// A sheet is drawn WHERE IT IS. Nothing is displaced by the motion it shows:
+// a displacement is a thousandth of a kilometre on a box hundreds across, so
+// any displacement that could be seen would be an exaggeration, and the
+// geometry on the screen is the model's own, to scale.
 //
 // The colour scale (limits, linear or log) is a pair of uniforms per sheet,
 // so changing it never touches the data.
@@ -22,16 +26,14 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { lut, type MapName } from "./colormaps";
 
 const VERT = `
-attribute vec3 aDisp;
 attribute float aValue;
-uniform float uWarp;
 varying float vValue;
 varying vec3 vRest;
 varying vec3 vWorld;
 void main() {
   vValue = aValue;
   vRest = position;
-  vec4 world = modelMatrix * vec4(position + uWarp * aDisp, 1.0);
+  vec4 world = modelMatrix * vec4(position, 1.0);
   vWorld = world.xyz;
   gl_Position = projectionMatrix * viewMatrix * world;
 }`;
@@ -57,8 +59,9 @@ void main() {
     ? (log(max(vValue, 1e-30)) - log(uLo)) / (log(uHi) - log(uLo))
     : (vValue - uLo) / (uHi - uLo);
   vec3 c = uPlain ? vec3(0.93) : texture(uLut, vec2(clamp(t, 0.0, 1.0), 0.5)).rgb;
-  // A little relief, from the warped surface's own normal, so a bulge reads
-  // as a bulge. It darkens by at most uShade and never changes the hue.
+  // A little shading by the face's own normal, so a block reads as a block
+  // and a slab as a slab. It darkens by at most uShade and never changes
+  // the hue.
   vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
   float lit = abs(dot(n, normalize(vec3(0.35, -0.45, 0.82))));
   fragColor = vec4(c * (1.0 - uShade * (1.0 - lit)), uOpacity);
@@ -72,7 +75,6 @@ export class Sheet {
   readonly mesh: Mesh;
   readonly wire: Mesh;
   readonly value: Float32Array;
-  readonly disp: Float32Array;
   readonly nodes: number;
   private geo: BufferGeometry;
   private mat: ShaderMaterial;
@@ -82,20 +84,16 @@ export class Sheet {
   constructor(nodes: Float32Array, triangles: Uint32Array) {
     this.nodes = nodes.length / 3;
     this.value = new Float32Array(this.nodes);
-    this.disp = new Float32Array(this.nodes * 3);
     const g = this.geo = new BufferGeometry();
     g.setAttribute("position", new BufferAttribute(nodes, 3));
     const v = new BufferAttribute(this.value, 1);
-    const d = new BufferAttribute(this.disp, 3);
     v.setUsage(DynamicDrawUsage);
-    d.setUsage(DynamicDrawUsage);
     g.setAttribute("aValue", v);
-    g.setAttribute("aDisp", d);
     g.setIndex(new BufferAttribute(triangles, 1));
     g.computeBoundingSphere();
 
     const uniforms = () => ({
-      uWarp: { value: 0 }, uLut: { value: lutTexture("viridis") },
+      uLut: { value: lutTexture("viridis") },
       uLo: { value: 0 }, uHi: { value: 1 }, uLog: { value: false },
       uShade: { value: 0.22 }, uOpacity: { value: 1 },
       uClip: { value: new Vector4(0, 0, 0, -1) },
@@ -116,15 +114,11 @@ export class Sheet {
     this.mesh = new Mesh(g, this.mat);
     this.wire = new Mesh(g, this.wireMat);
     this.wire.visible = false;
-    // The bounding sphere is the unwarped one; a warped sheet must not be
-    // culled by it.
-    this.mesh.frustumCulled = this.wire.frustumCulled = false;
   }
 
-  /** Call after writing `value` and `disp`. */
+  /** Call after writing `value`. */
   touch() {
     (this.geo.getAttribute("aValue") as BufferAttribute).needsUpdate = true;
-    (this.geo.getAttribute("aDisp") as BufferAttribute).needsUpdate = true;
   }
 
   setScale(s: Scale) {
@@ -139,11 +133,6 @@ export class Sheet {
 
   /** No colour: the sheet has nothing of the quantity being shown. */
   setPlain(on: boolean) { this.mat.uniforms.uPlain.value = on; }
-
-  setWarp(f: number) {
-    this.mat.uniforms.uWarp.value = f;
-    this.wireMat.uniforms.uWarp.value = f;
-  }
 
   /** Keep the part of the sheet where `n . x >= d` (rest position). */
   setClip(n: [number, number, number] | null, d = 0) {

@@ -35,8 +35,8 @@ npm run build      # into website/dist
 python website/scripts/make_payload.py --runs ~/mbem/runs
 ```
 
-needs mbem installed (`pip install -e .` in its checkout) and the three
-studies named at the top of the script in its `runs/`. The Running page gives
+needs mbem installed (`pip install -e .` in its checkout) and the studies
+named at the top of the script in its `runs/`. The Running page gives
 the commands that make them. A model's section through the volume is read
 from `runs/section-<model>`, made by
 
@@ -74,6 +74,9 @@ only names the studies and writes the schema `payload.ts` reads.
   buffer's, the box times the display's pixel density, so one left to size
   itself is drawn twice too large on a 2x display and cut off on the right.
   Check a change to the scene at a device scale factor of 2 as well as 1.
+- A sheet is drawn where it is, to scale. The motion is in the colour and
+  never in the geometry: no displacement is added to a node, so nothing on
+  the screen is exaggerated.
 - Time is one `Clock` per figure, and every slider on it is a `Timeline`.
   Whatever moves subscribes to the clock; nothing keeps a time of its own.
 - The Laplace inversion is not restated in TypeScript. If a quantity of time
