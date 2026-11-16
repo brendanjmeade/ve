@@ -19,6 +19,7 @@ export interface FieldEntry extends ArrayRef {
   rows: Record<string, number[][]>;
   range: Record<string, Record<string, number>>;
   error: Record<string, number>;
+  unit?: Record<string, string>;
 }
 
 export interface SheetEntry {
@@ -47,6 +48,7 @@ export interface Model {
   numbers: Record<string, any>;
   box: { lo: [number, number, number]; hi: [number, number, number] };
   window: [number, number];
+  view_depth?: number;
   quantities: Record<string, Quantity>;
   sheets: Record<string, SheetEntry>;
   outlines: Record<string, number[][][]>;

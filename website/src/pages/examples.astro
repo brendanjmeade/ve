@@ -25,7 +25,11 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     <p class="contact">
       The surface is drawn through its elements' values, averaged to the
       nodes but never across the fault. It is the finest mesh as solved; the
-      profile below it adds what the pair of meshes extrapolates to. See
+      profile below it adds what the pair of meshes extrapolates to. The
+      section is a plane of points at mid-strike, 3 or 4&nbsp;km apart, where
+      the field was read from the boundary solution; within about half an
+      element of a boundary a value there is limited by the elements, and
+      nothing is hidden on that account. See
       <a href={`${base}concepts/`}>Concepts</a>.
     </p>
   </Fragment>
@@ -60,10 +64,13 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
   </div>
 
   <p class="cap">
-    Pink outlines the fault. The surface and the base of the plate are
-    coloured by the quantity chosen and displaced by it, exaggerated; the
-    colour scale is fixed across time, so a pale early frame is a small early
-    motion. The profile is the surface within a narrow strip at mid-strike,
+    Pink outlines the fault. Every sheet is coloured by the quantity chosen
+    and displaced by the motion, exaggerated; the colour scale is fixed
+    across time, so a pale early frame is a small early motion.
+    <b>Deviatoric stress</b> is the size of the deviatoric part of the
+    elastic stress, on a log scale over three decades; it lives in the
+    volume, so only the section carries it and the other sheets are drawn
+    plain. The profile is the surface within a narrow strip at mid-strike,
     against the same rupture in a plate over a half-space solved by a
     wavenumber integral that shares nothing with the boundary elements. See
     <a href={`${base}concepts/`}>Concepts</a> for what each curve is.

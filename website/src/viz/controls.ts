@@ -10,7 +10,7 @@ import { cssGradient } from "./colormaps";
 import { axisAt, fmt, Payload, type Model, type Quantity } from "./payload";
 import { ProfilePanel } from "./profile";
 import { SheetScene, type Scale } from "./scene";
-import { ModelView, VECTOR, type Choice } from "./view";
+import { ModelView, type Choice } from "./view";
 
 const SWEEP_S = 10;            // seconds for "play" to cross the table once
 
@@ -68,9 +68,9 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
   let elements = false, cut = false, first = true;
 
   // --- controls -----------------------------------------------------------
-  const select = (name: string, onChange: (v: string) => void) => {
+  const select = (name: string, onChange: (v: string) => void | Promise<void>) => {
     const s = document.createElement("select");
-    s.addEventListener("change", () => onChange(s.value));
+    s.addEventListener("change", () => { void onChange(s.value); });
     q<HTMLElement>(`[data-ctl="${name}"]`).append(s);
     return s;
   };
@@ -92,8 +92,14 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
     clock.max = String(rows() - 1);
     apply();
   });
-  const scalarSel = select("scalar", (v) => { choice.scalar = v; apply(); });
-  fill(scalarSel, VECTOR.map((s) => [s.key, s.label]), choice.scalar);
+  const scalarSel = select("scalar", async (v) => {
+    choice.scalar = v;
+    // a stress is fetched when it is first asked for, not before
+    status.textContent = "loading\u2026";
+    await view.need(view.def(choice).field);
+    status.textContent = provenance();
+    apply();
+  });
 
   const clock = q<HTMLInputElement>("[data-clock]");
   clock.addEventListener("input", () => { pos = Number(clock.value); apply(); });
@@ -131,7 +137,7 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
       const sheet = view.sheet(name);
       sheet?.setVisible(shown[name] ?? true, elements);
       // the near half, toward the camera's first position, taken away
-      sheet?.setClip(cut ? [0, 1, 0] : null, 0);
+      sheet?.setClip(cut && name !== "section" ? [0, 1, 0] : null, 0);
     }
     scene.render();
   }
@@ -157,10 +163,14 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
     if (!view.model) return;
     const qn = view.quantity(choice);
     view.set(choice, pos, warp);
-    const def = VECTOR.find((s) => s.key === choice.scalar)!;
-    const what = qn.label.replace("displacement", `${def.label} displacement`)
-      .replace(/^velocity/, `${def.label} velocity`);
-    bar(q<HTMLElement>("[data-bar]"), view.scale(choice), `${what} (${qn.unit})`);
+    const def = view.def(choice);
+    const what = def.field === "sigma"
+      ? `${def.label}: ${quantityName(choice.quantity, qn)}`
+      : qn.label.replace("displacement", `${def.label} displacement`)
+          .replace(/^velocity/, `${def.label} velocity`);
+    const scale = view.scale(choice);
+    bar(q<HTMLElement>("[data-bar]"), scale,
+        `${what} (${view.unit(choice)})${scale.log ? ", log scale" : ""}`);
     const slip = view.slipScale(choice), slipBar = q<HTMLElement>("[data-slipbar]");
     slipBar.hidden = !slip;
     if (slip) {
@@ -175,12 +185,23 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
                 `${label}, ${qn.unit}; ${when(qn, pos)}.`);
   }
 
+  function provenance(): string {
+    const m = view.model, src = m.source;
+    return `${m.label}: run ${src.run} of ${src.study}` +
+      (src.mbem_git ? `, mbem ${src.mbem_git}` : "");
+  }
+
   // --- load ---------------------------------------------------------------
   async function load() {
     status.textContent = "loading…";
     try {
       const m = await view.load(key);
       profile.setData(await payload.profile(m), m);
+      if (!view.scalars.some((s) => s.key === choice.scalar)) choice.scalar = "z";
+      fill(scalarSel, view.scalars.map((s) => [s.key, s.label]), choice.scalar);
+      await view.need(view.def(choice).field);
+      // a model with a section opens as a block diagram: the near half away
+      if (first) { cut = "section" in m.sheets; cutIn.checked = cut; }
       const names = Object.keys(m.quantities);
       if (!names.includes(choice.quantity)) choice.quantity = names[0];
       fill(quantitySel, names.map((n) => [n, quantityName(n, m.quantities[n])]),
@@ -221,9 +242,7 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
         about.append(list);
       }
       apply();
-      const src = m.source;
-      status.textContent = `${m.label}: run ${src.run} of ${src.study}` +
-        (src.mbem_git ? `, mbem ${src.mbem_git}` : "");
+      status.textContent = provenance();
     } catch (e) {
       status.textContent = `failed: ${e}`;
     }

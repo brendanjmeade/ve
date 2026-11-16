@@ -23,6 +23,14 @@ export async function startHero(el: HTMLElement, baseUrl: string) {
     return;
   }
   scene.start();
+  // With a section the scene is a block diagram: the near half of the
+  // surface and of the plate's base taken away, the section facing out.
+  const block = !!view.sheet("section");
+  if (block) {
+    for (const name of view.names) {
+      if (name !== "section") view.sheet(name)!.setClip([0, 1, 0], 0);
+    }
+  }
   const readout = document.createElement("div");
   readout.className = "clock";
   el.append(readout);
@@ -45,8 +53,9 @@ export async function startHero(el: HTMLElement, baseUrl: string) {
     const phase = ((now - t0) / 1000 / LOOP_S) % 1;
     const pos = Math.min(phase / (1 - HOLD), 1) * top;
     if (idle) {
-      angle += 0.0009;
-      scene.place(angle, 0.5);
+      // a block diagram sways in front of its cut face; a surface turns
+      angle = block ? -1.25 + 0.4 * Math.sin((now - t0) / 9000) : angle + 0.0009;
+      scene.place(angle, block ? 0.36 : 0.5);
     }
     view.set(choice, pos, 1);
     readout.textContent = when(q, pos);

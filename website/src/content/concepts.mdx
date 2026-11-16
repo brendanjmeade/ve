@@ -184,6 +184,25 @@ walls do not know about the slab: between a 500 and an 800&nbsp;km box the
 horizontal agrees to 2&nbsp;%, but the vertical at 100 relaxation times
 differs by 31&nbsp;%.
 
+## Inside the volume
+
+No unknown lives inside the plate or the mantle, but the field does. Once the
+boundaries are solved, the displacement and the stress at any interior point
+are integrals over them, and that holds at every Laplace state, so it holds
+at every time. The sections on the [Examples](../examples/) page are a plane
+of such points at mid-strike.
+
+Two things to know when reading them. The stress shown is the *elastic*
+stress: a mollified fault smears its slip over a small width, the smeared
+slip carries a stress of its own that is not elastic, and it is removed.
+What is drawn is the size of the deviatoric part, on a log scale because it
+spans decades. That is the part a Maxwell material cannot hold: with the
+earthquake included, the stress under the megathrust's rupture falls
+twentyfold in ten relaxation times and is gone by a hundred, and what remains
+is in the plate. And within about half an element of a boundary a value is
+limited by the elements being piecewise constant. Nothing is hidden on that
+account.
+
 ## What is not here
 
 Everything on this site is linear. A power-law mantle, rate-and-state

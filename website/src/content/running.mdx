@@ -73,14 +73,32 @@ u = np.tensordot(laplace.Prony(s).weights([1.0, 10.0, 100.0]),
 velocity of the fault locked between earthquakes that repeat every `T`.
 [Concepts](../concepts/) says what each of these is.
 
+## Inside the volume
+
+The solve reports its answer on the boundary, and the boundary values give
+the field anywhere inside. `mbem sample` evaluates a stored run on points
+without solving anything:
+
+```bash
+python -m mbem sample runs/<megathrust-study>/02-2.0 \
+    --section y=0 --spacing 4 --no-eigenstress --out runs/section-megathrust
+```
+
+That is the vertical plane at mid-strike: displacement and elastic stress at
+20,000 points, 4 km apart, at each of the fourteen states with that state's
+moduli and that state's walls. It took two to three minutes a state on 22
+threads.
+The sections on the Examples page are these, cut off at 180 km depth.
+
 ## From a run to this page
 
 ```bash
 python website/scripts/make_payload.py --runs ~/mbem/runs
 ```
 
-reads the three studies and writes `website/public/data/`: 7.5 MB, fetched a
-model at a time. For each surface it writes a mesh and, for each field on it,
+reads the three studies and their sections and writes `website/public/data/`,
+fetched a model and a field at a time. For each surface or section it writes
+a mesh and, for each field on it,
 
 - **modes**: an orthonormal basis of the fourteen solutions, float32, with
   the ones below 10<sup>&minus;7</sup> of the largest dropped (ten to twelve

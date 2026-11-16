@@ -37,7 +37,15 @@ python website/scripts/make_payload.py --runs ~/mbem/runs
 
 needs mbem installed (`pip install -e .` in its checkout) and the three
 studies named at the top of the script in its `runs/`. The Running page gives
-the commands that make them.
+the commands that make them. A model's section through the volume is read
+from `runs/section-<model>`, made by
+
+```bash
+python -m mbem sample runs/<study>/<run> --section y=0 --spacing 4 \
+    --no-eigenstress --out runs/section-<model>
+```
+
+and a model without one is written without it.
 
 A stored Laplace run is one boundary solution per Laplace state, and time is
 a linear map of that stack whose weights sum to about 200 in magnitude. So

@@ -68,7 +68,15 @@ QUANTITY = {
     "locked": ("velocity of the locked fault", "of the slip rate"),
 }
 SHEET = {"top": "free surface", "interface": "base of the plate",
-         "fault_lower": "creeping reach"}
+         "fault_lower": "creeping reach", "section": "section at mid-strike"}
+# A stress is GPa for the run's slip in km: over the slip it is GPa/km, which
+# is MPa per metre.
+STRESS_UNIT = {"since": "MPa per metre of slip",
+               "total": "MPa per metre of slip",
+               "rate": "MPa per metre of slip, per Maxwell time",
+               "locked": "MPa per metre of plate motion"}
+VIEW_DEPTH = 180.0          # km of the box drawn, and of a section shipped
+SYM6 = ("xx", "yy", "zz", "xy", "yz", "xz")
 
 
 def num(a, digits=None):
@@ -133,17 +141,30 @@ def limits(field: np.ndarray) -> dict:
     if c == 1:
         return {"value": hi(field[..., 0]),
                 "max": float(np.abs(field).max())}
+    if c == 6:
+        # von Mises of the tensor at each time, never a difference of two
+        xx, yy, zz, xy, yz, xz = np.moveaxis(field, -1, 0)
+        vm = np.sqrt(0.5 * ((xx - yy) ** 2 + (yy - zz) ** 2 + (zz - xx) ** 2)
+                     + 3.0 * (xy ** 2 + yz ** 2 + xz ** 2))
+        peak = vm.max(axis=0)
+        return {"von_mises": float(np.percentile(peak, 99.5)),
+                "von_mises_lo": float(np.percentile(peak, 2.0)),
+                "max": float(vm.max())}
     mag = np.linalg.norm(field, axis=-1)
     return {"x": hi(field[..., 0]), "y": hi(field[..., 1]),
             "z": hi(field[..., 2]), "mag": hi(mag), "max": float(mag.max())}
 
 
-def encode(out: Out, name: str, stack: np.ndarray, s, periods) -> dict:
+def encode(out: Out, name: str, stack: np.ndarray, s, periods,
+           unit: dict = None) -> dict:
     """One field of one sheet: modes to a file, a table per quantity, and
     how far the decode is from the map it stands for."""
     modes, C = W.encode_modes(stack)
     entry = {"components": int(stack.shape[-1]), "modes": int(modes.shape[0]),
              **out.array(name, modes), "rows": {}, "range": {}, "error": {}}
+    if unit:
+        entry["unit"] = {q: unit[q.split(":")[0]]
+                         for q in W.time_weights(s, periods)}
     weights = W.time_weights(s, periods)
     for q, tb in W.time_tables(s, C, periods).items():
         got = W.decode_modes(modes, tb["rows"])
@@ -177,6 +198,59 @@ def sheet(out: Out, key: str, name: str, run, s, stack, faults, periods,
         entry["fields"]["u"] = encode(out, f"{key}.{name}.u", at, s, periods)
         entry["warp"] = "u"
     return entry
+
+
+def section(out: Out, key: str, run, s, vol: pathlib.Path, periods,
+            slip: float) -> dict:
+    """A vertical section at mid-strike, from ``mbem sample --section y=0``:
+    the displacement and the elastic stress of every state at the points of
+    a lattice, which is its own mesh. Nothing is averaged here; the points
+    are where the fields were evaluated."""
+    from mbem import config as cfg, vti
+
+    grid = json.loads((vol / "resolved.json").read_text())["grid"]
+    nx, ny, nz = grid["dims"]
+    if ny != 1:
+        raise ValueError(f"{vol.name} is not a section across y: dims "
+                         f"{grid['dims']}")
+    rows = sorted((r for r in run.resolved["states"] if r.get("s") is not None),
+                  key=lambda r: -float(r["s"]))
+    u, sig = [], []
+    for r in rows:                                # the order Prony takes
+        a = vti.read(vol / f"volume_{cfg.slug(r['label'])}.vti")["arrays"]
+        u.append(np.asarray(a["u"], float).reshape(-1, 3))
+        sig.append(np.stack([np.asarray(a[f"sigma_{c}"], float).ravel()
+                             for c in SYM6], axis=-1))
+    inside = np.asarray(a["region"], float).ravel() > 0
+    x = grid["origin"][0] + grid["spacing"][0] * np.arange(nx)
+    z = grid["origin"][2] + grid["spacing"][2] * np.arange(nz)
+    Z, X = np.meshgrid(z, x, indexing="ij")
+    keep = (inside & (Z.ravel() >= -VIEW_DEPTH)
+            & np.isfinite(np.stack(u)).all(axis=(0, 2)))
+    index = np.full(nx * nz, -1)
+    index[keep] = np.arange(int(keep.sum()))
+    at = np.arange(nx * nz).reshape(nz, nx)
+    a, b, c, d = at[:-1, :-1], at[:-1, 1:], at[1:, 1:], at[1:, :-1]
+    quads = np.stack([a, b, c, d], axis=-1).reshape(-1, 4)
+    quads = quads[keep[quads].all(axis=1)]
+    tri = index[np.concatenate([quads[:, [0, 1, 2]], quads[:, [0, 2, 3]]])]
+    nodes = np.column_stack([X.ravel(), np.full(nx * nz, grid["origin"][1]),
+                             Z.ravel()])[keep]
+    return {
+        "label": SHEET["section"], "nodes": int(nodes.shape[0]),
+        "triangles": int(tri.shape[0]), "elements": int(tri.shape[0]),
+        "spacing": grid["spacing"][0], "sampled": vol.name,
+        "mesh": {"nodes": out.array(f"{key}.section.nodes",
+                                    nodes.astype(np.float32)),
+                 "triangles": out.array(f"{key}.section.tris",
+                                        tri.astype(np.uint32))},
+        "fields": {
+            "u": encode(out, f"{key}.section.u",
+                        np.stack(u)[:, keep] / slip, s, periods),
+            "sigma": encode(out, f"{key}.section.sigma",
+                            np.stack(sig)[:, keep] / slip, s, periods,
+                            STRESS_UNIT)},
+        "warp": "u"}
 
 
 def profile(out: Out, spec: dict, study, s, periods) -> str:
@@ -243,6 +317,12 @@ def model(out: Out, spec: dict, runs: pathlib.Path) -> dict:
     if creeping:
         sheets["fault_lower"] = sheet(out, key, "fault_lower", run, s, stack,
                                       (), periods, slip)
+    vol = runs / f"section-{key}"
+    if (vol / "STATUS").exists() and (vol / "STATUS").read_text().strip() == "OK":
+        sheets["section"] = section(out, key, run, s, vol, periods, slip)
+    else:
+        print(f"  no section: {vol.name} is not a finished `mbem sample "
+              f"--section y=0 --out runs/{vol.name}`")
     outlines = {n: num(W.boundary_segments(run.meshes[f"{n}__v"],
                                            run.meshes[f"{n}__t"]), 6)
                 for n in ("fault", "fault_lower") if f"{n}__t" in run.meshes}
@@ -272,6 +352,7 @@ def model(out: Out, spec: dict, runs: pathlib.Path) -> dict:
             "creep": res["spec"]["laplace"].get("faults") or None},
         "box": {"lo": num(lo, 6), "hi": num(hi, 6)},
         "window": [float(f"{t0:.6g}"), float(f"{t1:.6g}")],
+        "view_depth": VIEW_DEPTH,
         "quantities": quantities(s, periods),
         "sheets": sheets, "outlines": outlines, "creeping": creeping,
         "profile": profile(out, spec, study, s, periods)}

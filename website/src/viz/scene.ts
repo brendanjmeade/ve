@@ -47,7 +47,7 @@ varying vec3 vRest;
 varying vec3 vWorld;
 uniform sampler2D uLut;
 uniform float uLo, uHi, uShade, uOpacity;
-uniform bool uLog, uWire;
+uniform bool uLog, uWire, uPlain;
 uniform vec4 uClip;            // keep where dot(rest, uClip.xyz) >= uClip.w
 uniform vec3 uWireColor;
 void main() {
@@ -56,7 +56,7 @@ void main() {
   float t = uLog
     ? (log(max(vValue, 1e-30)) - log(uLo)) / (log(uHi) - log(uLo))
     : (vValue - uLo) / (uHi - uLo);
-  vec3 c = texture(uLut, vec2(clamp(t, 0.0, 1.0), 0.5)).rgb;
+  vec3 c = uPlain ? vec3(0.93) : texture(uLut, vec2(clamp(t, 0.0, 1.0), 0.5)).rgb;
   // A little relief, from the warped surface's own normal, so a bulge reads
   // as a bulge. It darkens by at most uShade and never changes the hue.
   vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
@@ -98,6 +98,7 @@ export class Sheet {
       uShade: { value: 0.22 }, uOpacity: { value: 1 },
       uClip: { value: new Vector4(0, 0, 0, -1) },
       uWire: { value: false }, uWireColor: { value: new Color(0x222222) },
+      uPlain: { value: false },
     });
     this.mat = new ShaderMaterial({
       vertexShader: VERT, fragmentShader: FRAG, side: DoubleSide,
@@ -133,6 +134,9 @@ export class Sheet {
     }
     u.uLo.value = s.lo; u.uHi.value = s.hi; u.uLog.value = s.log;
   }
+
+  /** No colour: the sheet has nothing of the quantity being shown. */
+  setPlain(on: boolean) { this.mat.uniforms.uPlain.value = on; }
 
   setWarp(f: number) {
     this.mat.uniforms.uWarp.value = f;

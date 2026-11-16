@@ -188,3 +188,12 @@ button:disabled { opacity: .5; cursor: default; }
   .viewer .canvas { min-height: 320px; }
   .viewer .panel .val { min-width: 0; }
 }
+
+.note p:last-child { margin-bottom: 0; }
+
+/* In one column the main block must take the column's width, not its
+   content's: a code block or a displayed equation is wider than a phone, and
+   each scrolls inside itself only if its parent is not stretched by it. */
+@media (max-width: 760px) {
+  .main { width: 100%; }
+}
