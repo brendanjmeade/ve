@@ -97,7 +97,11 @@ export class Payload {
   private json(file: string): Promise<any> {
     let hit = this.docs.get(file);
     if (!hit) {
-      hit = fetch(this.base + file).then((r) => {
+      // The files keep their names across deploys and a browser may hold
+      // one for as long as the host allows: a document is always
+      // revalidated, and an array is asked for by the hash its document
+      // states (below), so new data is seen at once.
+      hit = fetch(this.base + file, { cache: "no-cache" }).then((r) => {
         if (!r.ok) throw new Error(`${file}: ${r.status}`);
         return r.json();
       });
@@ -117,7 +121,7 @@ export class Payload {
   private buffer(ref: ArrayRef): Promise<ArrayBuffer> {
     let hit = this.buffers.get(ref.file);
     if (!hit) {
-      hit = fetch(this.base + ref.file).then(async (r) => {
+      hit = fetch(`${this.base}${ref.file}?v=${ref.sha256}`).then(async (r) => {
         if (!r.ok) throw new Error(`${ref.file}: ${r.status}`);
         const b = await r.arrayBuffer();
         if (b.byteLength !== ref.bytes) {
