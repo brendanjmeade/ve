@@ -213,7 +213,13 @@ def section(out: Out, key: str, run, s, vol: pathlib.Path, periods,
     are where the fields were evaluated."""
     from mbem import config as cfg, vti
 
-    grid = json.loads((vol / "resolved.json").read_text())["grid"]
+    sampled = json.loads((vol / "resolved.json").read_text())
+    grid = sampled["grid"]
+    # how the points were read: close to a boundary from a continuous
+    # displacement ("near", mbem's recover.NearField) or from the elements'
+    # values ("plain"), and by which commit of mbem
+    readout = json.loads((vol / "report.json").read_text()).get("readout",
+                                                                "plain")
     nx, ny, nz = grid["dims"]
     if ny != 1:
         raise ValueError(f"{vol.name} is not a section across y: dims "
@@ -245,6 +251,7 @@ def section(out: Out, key: str, run, s, vol: pathlib.Path, periods,
         "label": SHEET["section"], "nodes": int(nodes.shape[0]),
         "triangles": int(tri.shape[0]), "elements": int(tri.shape[0]),
         "spacing": grid["spacing"][0], "sampled": vol.name,
+        "readout": readout, "mbem_git": sampled.get("env", {}).get("git"),
         "mesh": {"nodes": out.array(f"{key}.section.nodes",
                                     nodes.astype(np.float32)),
                  "triangles": out.array(f"{key}.section.tris",

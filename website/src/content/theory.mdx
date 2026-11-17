@@ -815,6 +815,49 @@ A quantity that is not linear in the stress is formed last. The deviatoric
 stress drawn on the sections is $\sqrt{3J_2}$ of the tensor at each time,
 never a combination of its values at the states.
 
+### Close to a boundary
+
+The formula is exact for the displacement and the traction on the boundary.
+What a solve returns is one value of each to an element, and close to a face
+the difference shows. The displacement enters through
+$\mathbf T^\varepsilon$, a double layer, and a double layer whose density
+steps from one element to the next has a dislocation line along the edge
+between them, as strong as the step. From further than an element away the
+lines cancel. From closer they do not. On a box under uniform strain, with
+the exact value on every element and nothing solved, the stress is wrong by
+
+| depth below the face, in elements | 0.1 | 0.2 | 0.5 | 1 |
+|---|---|---|---|---|
+| one value to an element | 19&nbsp;% | 10&nbsp;% | 3&nbsp;% | 0.5&nbsp;% |
+| a continuous displacement | 0.1&nbsp;% | &lt;&nbsp;0.1&nbsp;% | &lt;&nbsp;0.1&nbsp;% | &lt;&nbsp;0.1&nbsp;% |
+
+No way of solving for one value to an element changes the first row. So the
+sections are read differently near a face, and the solve is not touched.
+
+- **The displacement is made continuous.** At every vertex and every edge
+  midpoint of a boundary's mesh it takes the value of the quadratic that best
+  fits the elements two rings around: a piecewise-quadratic density with no
+  steps. A fault's trace divides the fit, because across a fault the
+  displacement does jump.
+- **The traction is left as it was solved.** Its steps matter little, and
+  where a fault cuts an interface it has a real concentration that a
+  smoothing would spread: on the megathrust that moved the whole interior by
+  7 to 9&nbsp;%.
+- **The width is narrowed for the reading.** Within about two widths
+  $\varepsilon$ of a face the mollified field falls to half its value there.
+  With no steps left to expose, the width of those boundaries is taken a
+  fifth as large, and the layer thins fivefold. With one value to an element
+  the same narrowing makes things worse.
+
+Only the elements within two of their own lengths of a point are read this
+way, and the rest as before, so a section costs 7&nbsp;% more time. On the
+megathrust the scatter from cell to cell of the mean stress, within a quarter
+of an element of the surface or of the plate's base, falls from 4&nbsp;% to
+0.2&nbsp;% at the median and from over 100&nbsp;% to 3 or 4&nbsp;% for the
+worst twentieth of the cells. More than two elements from every boundary
+nothing moves. Where a fault meets a boundary a concentration of stress
+remains, and it is the model's own.
+
 ## What it is held to
 
 Each piece above is tested against something that shares nothing with it.
@@ -829,6 +872,7 @@ Each piece above is tested against something that shares nothing with it.
 | layered shells on a rigid core, radial buoyancy | gravity, per $s$ and in time | within 2.6&nbsp;% |
 | the layered reference against half-space closed forms | the reference itself | $7\times10^{-5}$ on the walls of a box |
 | a megathrust through the plate, window and two meshes | everything at once | 1.6&nbsp;% in time, 0.5&nbsp;% through the cycle |
+| a box under uniform strain, read a tenth of an element below its free face | the reading close to a boundary | 1.2&nbsp;% at the worst point, where the elements' values give 19&nbsp;% |
 
 In every solved case the answer in time carries the elastic problem's own
 spatial error and nothing more. The closed forms are inverted on a contour,

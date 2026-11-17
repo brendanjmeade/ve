@@ -104,7 +104,10 @@ That is the vertical plane at mid-strike: displacement and elastic stress at
 20,000 points, 4 km apart, at each of the run's states with that state's
 moduli and that state's walls. It took two to three minutes a state on 22
 threads.
-The sections on the Examples page are these, cut off at 180 km depth.
+The sections on the Examples page are these, cut off at 180 km depth. Close
+to a boundary `mbem sample` reads the field from a continuous displacement
+([Theory](../theory/#close-to-a-boundary)); `--plain` gives the elements'
+values everywhere.
 
 ## From a run to this page
 
@@ -144,7 +147,9 @@ elements, in gates that run with the rest of mbem's:
   a window against it; a creeping penny crack against an exact solution.
 - `verify_volume`: the modes and tables this page uses reproduce the Python
   map; quantising each state instead is shown losing twice the signal; the
-  node averaging keeps a jump across a fault.
+  node averaging keeps a jump across a fault; and the reading close to a
+  boundary returns an exact solution to 1&nbsp;% where the elements' values
+  are 19&nbsp;% off.
 - `verify_config`: a run read back from its folder is the model that was
   solved, state by state, wall data included.
 

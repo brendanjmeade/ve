@@ -231,9 +231,16 @@ What is drawn is the size of the deviatoric part, on a log scale because it
 spans decades. That is the part a Maxwell material cannot hold: with the
 earthquake included, the stress under the megathrust's rupture falls
 twentyfold in ten relaxation times and is gone by a hundred, and what remains
-is in the plate. And within about half an element of a boundary a value is
-limited by the elements being piecewise constant. Nothing is hidden on that
-account.
+is in the plate.
+
+And close to a boundary the field is not read from the elements' values as
+they stand. One value to an element steps at every element edge, and a point
+within half an element of the boundary sees the steps one by one: in stress,
+a fifth of the answer at a tenth of an element. So the displacement on each
+boundary is first made continuous, by a quadratic fitted through the
+surrounding elements and never across a fault, and the elements near a point
+are read from that. The traction is left as it was solved.
+[Theory](../theory/#close-to-a-boundary) has the measurements.
 
 ## What is not here
 

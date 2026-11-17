@@ -29,9 +29,9 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
       nodes but never across the fault. It is the finest mesh as solved; the
       profile below it adds what the pair of meshes extrapolates to. The
       section is a plane of points at mid-strike, 3 or 4&nbsp;km apart, where
-      the field was read from the boundary solution; within about half an
-      element of a boundary a value there is limited by the elements, and
-      nothing is hidden on that account. See
+      the field was read from the boundary solution. Close to a boundary it
+      is read from a continuous displacement fitted through the elements'
+      values, because one value to an element would show through there. See
       <a href={`${base}concepts/`}>Concepts</a>.
     </p>
   </Fragment>
