@@ -791,6 +791,47 @@ the body's are one transform. The solved moment is within 0.7&nbsp;% of it at
 every $s$ and at every time, which is the crack's own error in the elastic
 problem.
 
+### Between two regions
+
+A fault is slip inside one material. Below the plate a megathrust's plane is
+the slab's upper face, and slip there is something else: two regions, slab
+and mantle wedge, moving past each other along the boundary they share. On
+such a boundary the traction $\mathbf t$ is already an unknown, shared by
+the two regions, and the displacement is one unknown too. Let it jump by the
+slip $\mathbf b$: the region the boundary's normal points into sees
+$\mathbf u+\mathbf b$ wherever it saw $\mathbf u$, and nothing else in its
+equations changes. A slip that is given is one more right-hand side. A slip
+that is solved is one more set of unknowns, and its own equations need no
+integral at all:
+
+$$
+\mathbf t-\kappa(s)\,\mathbf b=\Delta\mathbf t\ \ \text{in the plane},
+\qquad\mathbf n\cdot\mathbf b=0 ,
+$$
+
+where a fault's are the stress of every source evaluated on it. Otherwise
+it is the fault above: locked at $s=\infty$, free as $s\to0$.
+
+It has exact cases. Put one block on another, of different materials, and
+slip the plane between them: the upper block moves rigidly, to
+$5\times10^{-15}$. Hold the top face displaced by $U$ and let the plane go:
+it slips by exactly $U$ and carries nothing. And it can be asked the
+question a slab cannot be asked directly: a slab of the mantle's own
+material is no slab, so slip on its face must give the surface that the
+same slip gives as a fault through a flat base of the plate. It does, to
+0.9&nbsp;%, where the slip below the plate is a third of that surface's
+motion.
+
+One thing a model of this kind has to state. Uniform slip ends in a line
+where its traction is unbounded, and a creeping reach begins on that line.
+How far it slips against that edge is set by the width over which the
+boundary is smoothed, not by the elements: let go entirely, the reach on a
+slab's face slips 0.23, 0.30 and 0.34 of the rupture's slip at widths of 3,
+1.5 and 0.75&nbsp;km, the same on 10, 7.5 and 5&nbsp;km elements. The fault
+inside a region shows the same sensitivity from the other side. So a number
+for afterslip carries its width with it; the surface it produces moves by
+2&nbsp;%.
+
 ## Stress, and the interior
 
 No unknown lives inside a region, but the field does. Once the boundaries
@@ -880,35 +921,91 @@ Each piece above is tested against something that shares nothing with it.
 | the layered reference against half-space closed forms | the reference itself | $7\times10^{-5}$ on the walls of a box |
 | a megathrust through the plate, window and two meshes | everything at once | 1.6&nbsp;% in time, 0.5&nbsp;% through the cycle |
 | a box under uniform strain, read a tenth of an element below its free face | the reading close to a boundary | 1.2&nbsp;% at the worst point, where the elements' values give 19&nbsp;% |
+| two blocks, the plane between them slipping | slip between two regions, given and solved | a rigid motion to $5\times10^{-15}$ |
+| a slab of the mantle's own material, slip on its face | the same, against a fault through the plate's base | 0.9&nbsp;% at the surface |
+| a penny crack with graded faces, under a linear and an exponential law | a fault stepped in time, elastic and Maxwell body | the crack's own 0.6&nbsp;%, flat in time |
 
 In every solved case the answer in time carries the elastic problem's own
 spatial error and nothing more. The closed forms are inverted on a contour,
 which shares nothing with the real-axis fit.
 
-## Beyond linearity
+## A law that is not linear
 
-Everything above rests on the problem being linear and on the kind of each
-boundary condition staying fixed. A mantle that flows by a power law,
-friction that is not linearised, a fault that chooses when to slip: none of
-these has a transform that helps.
-
-For the boundary conditions there is a way through that keeps the volume
-empty, and it is a design, not something built. Multiplying by
-$s/(s+\beta)$ is, in time, a memory variable
-$m(t)=\int_0^te^{-\beta(t-t')}\,\dot x(t')\,dt'$, which obeys
-$\dot m=-\beta\,m+\dot x$ and updates in one line a step:
+Everything above rests on the problem being linear. Friction that is not
+linearised is not: a fault that strengthens with slip rate, sliding at
+$v_0$ under its ambient stress, slides at $v_0\,e^{\Delta\tau/a\sigma}$
+when its shear traction changes by $\Delta\tau$, so measured from steady
+slip
 
 $$
-m^n=e^{-\beta\Delta t}\,m^{n-1}+\psi\,(x^n-x^{n-1}),\qquad
-\psi=\frac{1-e^{-\beta\Delta t}}{\beta\,\Delta t}.
+\dot b=v_0\big(e^{\Delta\tau/a\sigma}-1\big) ,
 $$
 
-Because every operator is geometry times a few such functions, the history
-of a region is a few vectors the size of its boundary unknowns. An implicit
-step is an elastic solve at effective moduli that lie between the unrelaxed
-and the relaxed ones, and one factorisation serves every step of the same
-length. A nonlinear *rheology* is another matter: its viscous strain is a
-field in the volume, and a method that has no volume has nowhere to keep it.
+which is the linear law of the last section with $\eta_f=a\sigma/v_0$ only
+while $\Delta\tau\ll a\sigma$. No transform helps with that.
+
+But the fault is the only part that is not linear, so the body is reduced
+to the fault and the fault alone is stepped. At a state $s_k$ every unknown
+but the fault's slip is eliminated, which leaves on the fault
+
+$$
+\boldsymbol\tau=S_k\,\mathbf b+\mathbf L_k ,
+$$
+
+its stiffness in that body and what the earthquake loads it with while it
+is held. $S$ is a transfer function like any other here, so the same fit
+gives it in time, $S(t)=S_\infty+\sum_jS_j\,e^{-t/\tau_j}$, and each
+exponential is one vector that decays,
+$\mathbf p_j=\int_0^te^{-(t-t')/\tau_j}\,\dot{\mathbf b}\,dt'$:
+
+$$
+\boldsymbol\tau=S_\infty\mathbf b+\sum_jS_j\,\mathbf p_j+\mathbf L(t),
+\qquad\dot{\mathbf b}=F(\boldsymbol\tau),
+\qquad\dot{\mathbf p}_j=\dot{\mathbf b}-\mathbf p_j/\tau_j .
+$$
+
+An ordinary differential equation in the fault's unknowns alone, which an
+adaptive Runge-Kutta pair integrates. The solves are the ones the linear
+problem needs anyway, with one right-hand side more for each slip unknown;
+the stepping itself is minutes.
+
+Used this way the fit owes one thing more than it does as a formula. Its
+constant, what the fault's stiffness has relaxed to by the end of the
+window, misses by a part in a thousand, and where the true value is nearly
+zero it can miss with the wrong sign. A formula does not care. An equation
+that feeds back through it does: the fault then grows by 2 to 5&nbsp;% over
+the window. The growing part of that constant is moved onto the slowest
+exponential, which changes the kernel by less than its own error and leaves
+nothing that grows.
+
+It is held to closed forms in time. The penny crack of the last section,
+with the mobility of its faces graded as $\sqrt{1-r^2/a^2}$, keeps its
+elliptical slip under any law, so its peak slip obeys one scalar equation:
+an exponential for a linear law, and for the exponential law above
+
+$$
+B(t)=\frac{A}{k_E}\,\ln\!\Big(1+\frac{t}{t_c}\Big) ,
+$$
+
+the logarithm afterslip is known for. In a Maxwell body the crack's
+stiffness relaxes with the material's two exact poles, and the scalar
+equation with those is a reference that shares nothing with the fit. All
+four cases, linear and exponential, elastic and Maxwell, come out within
+the crack's own 0.6&nbsp;% and flat in time.
+
+What this does not reach. The law has no state variable and no radiation
+damping, so the fault creeps and never ruptures: rate and state is not
+built. A nonlinear *rheology* is another matter again: its viscous strain is
+a field in the volume, and a method that has no volume has nowhere to keep
+it. And a stepped model's field inside the volume is a sum over states at
+every time, which is not made: such a model is shown on its boundaries.
+
+There was another way, designed and not built: carry a memory variable for
+every boundary unknown instead,
+$m(t)=\int_0^te^{-\beta(t-t')}\,\dot x(t')\,dt'$, with the material's own
+poles and no fit. It is exact where the reduction is fitted, and a step of
+it costs the square of the boundary's unknowns where the reduction costs
+the square of the fault's.
 
 ## References
 

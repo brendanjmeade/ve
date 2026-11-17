@@ -57,6 +57,34 @@ python -m mbem run configs/plate_substrate.py \
     --set t_max=100 --set t_min=0.02 --set refine=2 --sweep tau_K=0.1,0
 ```
 
+A slab, a Burgers mantle, and afterslip on the slab's upper face, where the
+megathrust runs below the plate (`depth` greater than the plate under a
+slab). The face is solved, so the solver is dense and the plate's faces are
+coarser than the slab model's; `creep_tau=1e6` holds the face, for
+comparison:
+
+```bash
+python -m mbem run configs/plate_substrate.py \
+    --set dip=20 --set rake=90 --set depth=50 \
+    --set rho_plate=3300 --set rho_substrate=3300 \
+    --set edge_near=15 --set edge_interface=20 --set near_field_radius=150 \
+    --set sides=window --set half_x=500 --set depth_box=300 \
+    --set fault_half_len=100 --set slab_depth=150 --set edge_lower=7.5 \
+    --set tau_K=0.1 --set t_min=0.02 --set t_max=100 \
+    --set backend=dense --set lower=creep --sweep creep_tau=1,1e6
+```
+
+The same model with friction on the face, stepped in time after 5&nbsp;m of
+slip (`route=step`; `creep_stress` is $a\sigma$ in GPa, 1&nbsp;MPa by
+default):
+
+```bash
+python -m mbem run configs/plate_substrate.py \
+    ...the same... \
+    --set route=step --set creep_law=friction --set slip=5 \
+    --set times_per_decade=16
+```
+
 The finer megathrust is the large one: 219,315 unknowns, fourteen states,
 39 minutes on a 48-core machine with the block-compressed operator when
 three studies shared it. The Burgers run is the same mesh at seventeen
@@ -64,9 +92,9 @@ states and took 21 minutes with the machine to itself. The others are
 smaller.
 
 <div class="note">
-These options (<code>sides=window</code>, <code>lower=creep</code>,
-<code>slab_depth</code>) are in mbem pull request #2 at the time of writing.
-Until it is merged they are on the branch, not on <code>main</code>.
+The last two (slip on a slab's face, <code>route=step</code>) are in mbem
+pull request #7 at the time of writing. Until it is merged they are on the
+branch <code>stepper</code>, not on <code>main</code>.
 </div>
 
 ## From a run to a time
@@ -115,8 +143,8 @@ values everywhere.
 python website/scripts/make_payload.py --runs ~/mbem/runs
 ```
 
-reads the four studies and their sections and writes `website/public/data/`,
-fetched a model and a field at a time. For each surface or section it writes
+reads the five studies, their sections and the one stepped run, and writes
+`website/public/data/`, fetched a model and a field at a time. For each surface or section it writes
 a mesh and, for each field on it,
 
 - **modes**: an orthonormal basis of the run's fourteen or seventeen
@@ -135,6 +163,12 @@ megathrust's velocity, and ten times less on displacement.
 The surface is drawn through its elements' values averaged to the mesh nodes.
 A node on the fault is split in two, one per side, so the slip is never
 averaged away.
+
+The stepped model is already a history, so it has no weights to apply: its
+table for a time is that time's own coefficients in the modes. It ships the
+displacement since the earthquake and with it, on the free surface, the
+plate's base and the creeping face. It has no velocity, no cycle and no
+section: none of those is made for a stepped run.
 
 ## Checked, not trusted
 

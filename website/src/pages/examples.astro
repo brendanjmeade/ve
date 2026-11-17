@@ -4,7 +4,7 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
 ---
 <Base
   title="ve — Examples"
-  description="Move the clock through stored viscoelastic boundary element solutions: a megathrust, its afterslip, a subducting slab and a Burgers substrate, against a layered reference."
+  description="Move the clock through stored viscoelastic boundary element solutions: a megathrust, its afterslip, a subducting slab, a Burgers substrate, and afterslip on a slab's face under a linear law and under friction."
   current="examples"
 >
   <Fragment slot="sidebar">
@@ -12,7 +12,9 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     <p>
       Nothing is solved here. Each model was solved in Python, once per
       Laplace state; this page adds those solutions together with the weights
-      of one time, which is all a time is.
+      of one time, which is all a time is. The last model is the exception:
+      its fault obeys friction, which is not linear, so it was stepped
+      through time in Python and what is played here is its history.
     </p>
     <div data-facts class="facts"></div>
     <div class="note">
@@ -64,8 +66,8 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     are one clock. It is logarithmic in time, so each decade has the same
     length, and its first stop is the earthquake itself. Between that stop
     and the first time the solves were laid out for (0.1 Maxwell times, or
-    0.02 for the Burgers model) nothing was fitted, and the picture there is
-    only a blend of the two. Pink outlines the
+    0.02 where the substrate is a Burgers material) nothing was fitted, and
+    the picture there is only a blend of the two. Pink outlines the
     fault. Every sheet is coloured by the quantity chosen and drawn where it
     is, to scale: nothing is exaggerated, and the motion is in the colour
     alone. The colour scale is fixed across time, so a pale early frame is a

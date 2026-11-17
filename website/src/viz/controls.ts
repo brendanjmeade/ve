@@ -31,8 +31,19 @@ export function facts(m: Model): string[] {
       `A Burgers substrate: a transient with time ${fmt(sub.tau_K)} Maxwell ` +
       `times and a Kelvin spring ${fmt(sub.kelvin)} × the shear modulus, in ` +
       `series with the steady flow that sets the clock.`] : []),
+    ...(n.slab_depth > n.plate && n.fault_depth > n.plate ? [
+      `Below the plate the megathrust runs down the slab's upper face, ` +
+      `where slab and mantle wedge slide past each other: slip on an ` +
+      `interface between two regions, not a fault inside one.`] : []),
     `${n.states} elastic solves, one per Laplace state; times from ` +
     `${fmt(m.window[0])} to ${fmt(m.window[1])} Maxwell times.`,
+    ...(n.stepped ? [
+      `The slab's face follows friction that strengthens with slip rate ` +
+      `(a σ = ${fmt(1000 * n.creep.fault_lower.a_sigma)} MPa) after ` +
+      `${fmt(n.slip_m)} m of slip. That law is not linear, so those solves ` +
+      `are only what the face feels: its ${int(n.stepped.slip_unknowns)} ` +
+      `slip unknowns were then stepped through time, ` +
+      `${int(n.stepped.law_evaluations)} evaluations of the law.`] : []),
     `A box ${int(2 * n.half_x)} km square and ${int(n.depth)} km deep` +
     (n.sides === "window"
       ? `, whose walls carry the far field of the slip in a layered half-space.`
@@ -162,7 +173,7 @@ export async function startViewer(root: HTMLElement, baseUrl: string) {
 
   function provenance(): string {
     const m = view.model, src = m.source;
-    return `${m.label}: run ${src.run} of ${src.study}` +
+    return `${m.label}: run ${src.run}${src.study ? ` of ${src.study}` : ""}` +
       (src.mbem_git ? `, mbem ${src.mbem_git}` : "");
   }
 

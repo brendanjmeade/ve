@@ -177,12 +177,11 @@ mantle wraps it. With a slab to 150&nbsp;km the uplift behind the trench
 barely relaxes, and the postseismic displacement differs from the model
 without one by 61, 70 and 43&nbsp;% at 1, 10 and 100 relaxation times.
 
-Two limits are stated on that model. The slab is welded to the mantle below
-the megathrust, and plate and mantle share one density, because a lighter
-slab hanging in a heavier mantle is unstable once anything relaxes. And the
-walls do not know about the slab: between a 500 and an 800&nbsp;km box the
-horizontal agrees to 2&nbsp;%, but the vertical at 100 relaxation times
-differs by 31&nbsp;%.
+Two limits are stated on that model. Plate and mantle share one density,
+because a lighter slab hanging in a heavier mantle is unstable once anything
+relaxes. And the walls do not know about the slab: between a 500 and an
+800&nbsp;km box the horizontal agrees to 2&nbsp;%, but the vertical at 100
+relaxation times differs by 31&nbsp;%.
 
 ## A substrate that relaxes twice
 
@@ -216,6 +215,55 @@ within 2.8&nbsp;% through the transient and out to ten Maxwell times, and
 4.3&nbsp;% at a hundred. That is what its Maxwell twin on the same mesh
 gives. The [Examples](../examples/) profile draws the two together.
 
+## Afterslip on a slab
+
+Below the plate the megathrust's plane is the slab's upper face, and slip
+there is not a fault's. A fault is slip inside one material; this is two
+regions, slab and mantle wedge, moving past each other along the boundary
+they share. On that boundary the traction is already an unknown, and the
+displacement is allowed to jump by the slip. Nothing else is new, and the
+law of the last section needs no integral here: the traction it acts on is
+the unknown itself.
+
+The fifth model puts the three together: a slab to 150&nbsp;km, a Burgers
+mantle, and the megathrust running from the plate's base at 30&nbsp;km down
+the slab's face to 50&nbsp;km, where it creeps. That face slips by 0.08 of
+the earthquake's slip on average after one relaxation time, 0.23 after ten
+and 0.31 after a hundred: 0.42 just under the plate and 0.18 at its lower
+edge. It does not finish within ten relaxation times as the reach of the
+afterslip model does. There the reach lies inside the mantle, which takes
+its stress away; here one side of it is a slab that does not relax, and
+goes on loading it.
+
+One caution belongs to that number. Uniform slip ends in a line where its
+traction is unbounded, and the creeping face begins on that line. How far
+it slips against that edge is set by the width the boundary is smoothed
+over, 1.5&nbsp;km here, and not by the elements: let go entirely, a face
+like this one slips 0.23, 0.30 and 0.34 of the slip at 3, 1.5 and
+0.75&nbsp;km. The surface it produces moves by 2&nbsp;%.
+
+## A law that is not linear
+
+Friction is not a viscosity. A fault that strengthens with slip rate,
+sliding at $v_0$ under its ambient stress, slides at
+$v_0\,e^{\Delta\tau/a\sigma}$ when its shear traction changes by
+$\Delta\tau$: for a small change that is the linear law above, and for a
+large one it is exponentially faster. It has no Laplace state.
+
+But the fault is the only part of the model that is not linear. So each
+state is reduced to what the fault feels, a stiffness and a load, the
+body's relaxation rides along as the fit's own exponentials, and the fault
+alone is stepped through time by an adaptive Runge-Kutta pair. The solves
+are the ones the linear model needs; the stepping is minutes.
+
+The sixth model is the fifth again with that law on the slab's face,
+$a\sigma=1$&nbsp;MPa, after an earthquake of 5&nbsp;m. A law that is not
+linear knows how large the earthquake was, so this one is not per unit
+slip. By 0.02 relaxation times the face has slipped 0.032 of the
+earthquake's slip where the linear law has 0.003; by 0.1, 0.054 against
+0.013; and at a hundred they are 0.33 and 0.31. Friction moves afterslip
+early, which is where geodesy sees it.
+
 ## Inside the volume
 
 No unknown lives inside the plate or the mantle, but the field does. Once the
@@ -244,8 +292,11 @@ are read from that. The traction is left as it was solved.
 
 ## What is not here
 
-Everything on this site is linear. A power-law mantle, rate-and-state
-friction and a fault that chooses when to slip all need a time-stepper, which
-is designed and not built. Slip is uniform on each rupture. The substrate is
-a Maxwell or a Burgers material, the same everywhere below the plate: no
-layering of viscosity and no weak zone.
+Rate and state. The stepped fault obeys friction at steady state, with no
+state variable and no radiation damping: it creeps, faster or slower, and
+never ruptures. A power-law mantle is further off, because its viscous
+strain is a field in the volume and this method has none. Slip is uniform
+on each rupture. The substrate is a Maxwell or a Burgers material, the same
+everywhere below the plate: no layering of viscosity and no weak zone. And
+the stepped model is shown on its boundaries only: its field inside the
+volume, its velocity and its earthquake cycle are not made yet.

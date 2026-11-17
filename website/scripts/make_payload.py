@@ -1,4 +1,4 @@
-"""Build ``website/public/data`` from stored mbem Laplace runs.
+"""Build ``website/public/data`` from stored mbem runs.
 
     python website/scripts/make_payload.py --runs ~/desktop/mbem/runs
 
@@ -15,6 +15,13 @@ Every number that could be wrong quietly is made by ``mbem.webexport``, which
 mbem's gates check (``verify_volume`` [i]): the modes, the tables, the
 node averaging that must not cross a fault. This file only names the studies
 and writes the schema ``src/viz/payload.ts`` reads.
+
+A STEPPED run (``mbem.stepper``: a fault under a law that is not linear) has
+no Laplace state to weigh: it is already a history, every boundary unknown at
+every time. It goes out in the same form -- modes, and a table whose rows
+are the times themselves -- so the page draws it with the code it draws the
+others with. It has no velocity, no cycle and no section through the volume:
+none of those exists for a stepped run.
 """
 from __future__ import annotations
 
@@ -26,6 +33,7 @@ import pathlib
 import numpy as np
 
 from mbem import TriMesh, figures as F, laplace, webexport as W
+from mbem.cases import layered_box as lb
 from mbem.figures import plate as P
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -68,6 +76,31 @@ MODELS = (
               "Burgers material, whose transient element gives up half its "
               "shear modulus within a tenth of a Maxwell time before the "
               "steady flow takes the rest."},
+    {"key": "slab_afterslip",
+     "label": "slab, Burgers mantle, afterslip on the slab's face",
+     "study": "05b1", "run": {"creep_tau": 1.0},
+     "curves": (("model", "slab's face creeping", {"creep_tau": 1.0}, None),
+                ("other", "slab's face held", {"creep_tau": 1000000.0}, None)),
+     "reference": ("layered reference: no slab, no afterslip",
+                   {"creep_tau": 1.0}),
+     "blurb": "The three together. A thrust ruptures the 30 km plate, 200 km "
+              "long; the footwall plate goes on down dip to 150 km as an "
+              "elastic slab; the mantle around it is a Burgers material; and "
+              "below the plate, from 30 to 50 km, the megathrust runs down "
+              "the slab's upper face, where slab and mantle wedge slide past "
+              "each other at a rate proportional to the shear traction "
+              "between them. Locked in the earthquake, it slips afterwards."},
+    {"key": "slab_friction",
+     "label": "the same, the slab's face under friction",
+     "stepped": "d2f7", "linear": ("05b1", {"creep_tau": 1.0}),
+     "blurb": "The same model after an earthquake of 5 m, with a law that is "
+              "not linear on the slab's face: friction that strengthens with "
+              "slip rate, at steady state, with a sigma = 1 MPa. Such a law "
+              "has no Laplace state, so the face is stepped through time "
+              "instead, the rest of the body reduced to what the face feels. "
+              "It is the linear law of the model above for a small change "
+              "of traction and faster above it, so it knows how large the "
+              "earthquake was."},
 )
 
 QUANTITY = {
@@ -181,6 +214,167 @@ def encode(out: Out, name: str, stack: np.ndarray, s, periods,
                              for k, v in limits(got).items()}
         entry["error"][q] = float(f"{np.abs(got - want).max() / np.abs(want).max():.2g}")
     return entry
+
+
+# ---- a stepped run: a history, in the same form --------------------------
+
+def history_quantities(t) -> dict:
+    return {q: {"axis": "time", "at": num(t, 6), "label": QUANTITY[q][0],
+                "unit": QUANTITY[q][1]} for q in ("since", "total")}
+
+
+def encode_history(out: Out, name: str, field: np.ndarray) -> dict:
+    """One field of one sheet of a stepped run, ``(n_times, n_nodes, c)``
+    with the earthquake first: modes, and the two tables a history has --
+    each time as it is, and each time less the earthquake."""
+    modes, C = W.encode_modes(field)
+    entry = {"components": int(field.shape[-1]), "modes": int(modes.shape[0]),
+             **out.array(name, modes), "rows": {}, "range": {}, "error": {}}
+    for q, rows, want in (("since", C - C[0], field - field[0]),
+                          ("total", C, field)):
+        got = W.decode_modes(modes, rows)
+        entry["rows"][q] = num(rows)
+        entry["range"][q] = {k: float(f"{v:.4g}")
+                             for k, v in limits(got).items()}
+        entry["error"][q] = float(
+            f"{np.abs(got - want).max() / np.abs(want).max():.2g}")
+    return entry
+
+
+def stepped(out: Out, spec: dict, runs: pathlib.Path) -> dict:
+    """A model stepped in time, beside the linear run it is compared with."""
+    hits = sorted(runs.glob(f"*-{spec['stepped']}"))
+    if len(hits) != 1:
+        raise FileNotFoundError(f"{spec['key']}: {len(hits)} runs end in "
+                                f"-{spec['stepped']} under {runs}")
+    run = F.load_run(hits[0])
+    key, res, hist = spec["key"], run.resolved, run.history
+    t = hist["t"]
+    if t[0] != 0.0:
+        raise ValueError(f"{key}: a stepped run is shipped from the "
+                         f"earthquake on; its first time is {t[0]:g}")
+    gp, mp = (res["spec"]["model"]["geometry"]["params"],
+              res["spec"]["model"]["params"])
+    slip = mp.get("slip_mag", 1.0e-3)
+    faults = [TriMesh(run.meshes[f"{n}__v"], run.meshes[f"{n}__t"])
+              for n in ("fault", "fault_lower")]
+    sense = lb.burgers(1.0, mp.get("rake", 180.0), run.meshes["arr__n_hat"],
+                       run.meshes["arr__s_hat"])
+
+    def one(name, field, split, what):
+        v, tr = run.meshes[f"{name}__v"], run.meshes[f"{name}__t"]
+        nodes, tri, A = W.node_sheet(v, tr, split)
+        at = np.stack([A @ f for f in field]) / slip
+        return {"label": SHEET[name], "nodes": int(nodes.shape[0]),
+                "triangles": int(tri.shape[0]), "elements": int(tr.shape[0]),
+                "mesh": {"nodes": out.array(f"{key}.{name}.nodes",
+                                            nodes.astype(np.float32)),
+                         "triangles": out.array(f"{key}.{name}.tris",
+                                                tri.astype(np.uint32))},
+                "fields": {what: encode_history(out, f"{key}.{name}.{what}",
+                                                at)}}
+
+    sheets = {n: one(n, hist[f"u:{n}"], faults, "u")
+              for n in ("top", "interface")}
+    sheets["fault_lower"] = one(
+        "fault_lower", (hist["b:fault_lower"] @ sense)[..., None], (), "slip")
+
+    # the profile: this run, the linear law's run at the same times, and the
+    # layered reference, each a stack over TIMES; the weights are then the
+    # identity, and the identity less the earthquake
+    study = F.load_study(_one(runs, spec["linear"][0], key))
+    lin = study.one(**spec["linear"][1])
+    s, x_lin, u_lin = P.in_plane(lin)
+    w = W.time_weights(s)["total"]
+    if not np.allclose(w["at"], t, rtol=1e-9, atol=0.0):
+        raise ValueError(f"{key}: the stepped run's times are not the "
+                         f"linear run's")
+    _t, x, u = P.in_plane_stepped(run)
+    if not np.allclose(x, x_lin):
+        raise ValueError(f"{key}: the two runs' profiles are not at the "
+                         f"same points")
+    span = float(np.abs(x).max())
+    xf = np.linspace(-span, span, 161)
+    xf = xf[np.abs(xf) > 0.5]
+    curves = [
+        {"key": "model", "label": f"friction, {slip * 1e3:g} m of slip",
+         "x": num(x, 6), "stack": num(u)},
+        {"key": "other", "label": "the linear law", "x": num(x, 6),
+         "stack": num(np.tensordot(w["w"], u_lin, axes=1))},
+        {"key": "reference", "label": "layered reference: no slab, no "
+         "afterslip", "x": num(xf, 6),
+         "stack": num(np.tensordot(w["w"], P.in_plane_reference(lin, s, xf),
+                                   axes=1))}]
+    eye = np.eye(t.size)
+    since = eye.copy()
+    since[:, 0] -= 1.0
+    weights = {"since": since, "total": eye}
+    ref = np.tensordot(w["w"], P.in_plane_reference(lin, s, x), axes=1)
+    misfit = {}
+    for c in curves[:2]:
+        got = np.array(c["stack"])
+        misfit[c["key"]] = {}
+        for q, wq in weights.items():
+            a, b = (np.tensordot(wq, k, axes=1) for k in (got, ref))
+            with np.errstate(invalid="ignore", divide="ignore"):
+                m = np.sqrt(((a - b) ** 2).sum(axis=(1, 2))
+                            / (b ** 2).sum(axis=(1, 2)))
+            misfit[c["key"]][q] = num(m, 3)
+    profile_file = out.json(f"{key}.profile.json", {
+        "components": ["horizontal, across the trench", "vertical"],
+        "curves": curves, "misfit": misfit, "s": num(t),
+        "weights": {q: num(wq) for q, wq in weights.items()}})
+
+    outlines = {n: num(W.boundary_segments(run.meshes[f"{n}__v"],
+                                           run.meshes[f"{n}__t"]), 6)
+                for n in ("fault", "fault_lower")}
+    lo = np.min([run.meshes[k].min(axis=0) for k in run.meshes
+                 if k.endswith("__v")], axis=0)
+    hi = np.max([run.meshes[k].max(axis=0) for k in run.meshes
+                 if k.endswith("__v")], axis=0)
+    rep = run.report
+    t0, t1 = laplace.window(s)
+    entry = {
+        "schema": SCHEMA, "key": key, "label": spec["label"],
+        "blurb": spec["blurb"],
+        "source": {"run": run.run_dir.name,
+                   "mbem_git": res.get("env", {}).get("git"),
+                   "command": "python -m mbem run configs/plate_substrate.py"},
+        "numbers": {
+            "unknowns": res["model"]["n_unknowns"],
+            "elements": res["model"]["n_tris"],
+            "states": len(res["states"]),
+            "backend": res["spec"]["backend"]["kind"],
+            "wall_s": round(rep.get("wall_s", 0.0)),
+            "dip": gp["dip"], "rake": mp.get("rake"),
+            "fault_depth": gp["fault_depth"],
+            "fault_half_len": gp["fault_half_len"],
+            "plate": -gp["z_interface"], "half_x": gp["half_x"],
+            "depth": -gp["z_bottom"], "slab_depth": gp.get("slab_depth", 0.0),
+            "sides": mp.get("sides"), "lower": mp.get("lower", "slip"),
+            "density": (res["model"].get("gravity") or {}).get("density"),
+            "rheology": res["spec"]["laplace"]["rheology"],
+            "creep": res["spec"]["stepper"]["faults"],
+            "slip_m": slip * 1.0e3,
+            "stepped": {"slip_unknowns": rep["stepper"]["slip_unknowns"],
+                        "law_evaluations": rep["stepper"]["law_evaluations"],
+                        "march_s": round(rep["phases"]["march"])}},
+        "box": {"lo": num(lo, 6), "hi": num(hi, 6)},
+        "window": [float(f"{t0:.6g}"), float(f"{t1:.6g}")],
+        "view_depth": VIEW_DEPTH,
+        "quantities": history_quantities(t),
+        "sheets": sheets, "outlines": outlines, "creeping": True,
+        "profile": profile_file}
+    out.json(f"{key}.json", entry)
+    return {"key": key, "label": spec["label"], "file": f"{key}.json"}
+
+
+def _one(runs: pathlib.Path, tail: str, key: str) -> pathlib.Path:
+    hits = sorted(runs.glob(f"*-{tail}"))
+    if len(hits) != 1:
+        raise FileNotFoundError(f"{key}: {len(hits)} studies end in -{tail} "
+                                f"under {runs}")
+    return hits[0]
 
 
 def sheet(out: Out, key: str, name: str, run, s, stack, faults, periods,
@@ -394,7 +588,8 @@ def main() -> int:
                 out.wrote |= {p.name for p in a.out.glob(f"{spec['key']}.*")}
             continue
         print(f"{spec['key']} ...", flush=True)
-        index.append(model(out, spec, a.runs.expanduser()))
+        index.append((stepped if "stepped" in spec else model)(
+            out, spec, a.runs.expanduser()))
         entry = json.loads((a.out / f"{spec['key']}.json").read_text())
         for name, sh in entry["sheets"].items():
             for f, e in sh["fields"].items():

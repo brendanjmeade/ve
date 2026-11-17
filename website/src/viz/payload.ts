@@ -43,7 +43,7 @@ export interface Model {
   key: string;
   label: string;
   blurb: string;
-  source: { study: string; run: string; mbem_git: string | null };
+  source: { study?: string; run: string; mbem_git: string | null };
   numbers: Record<string, any>;
   box: { lo: [number, number, number]; hi: [number, number, number] };
   window: [number, number];
