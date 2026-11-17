@@ -110,7 +110,8 @@ QUANTITY = {
     "locked": ("velocity of the locked fault", "of the slip rate"),
 }
 SHEET = {"top": "free surface", "interface": "base of the plate",
-         "fault_lower": "creeping reach", "section": "section at mid-strike"}
+         "slab": "slab", "fault_lower": "creeping reach",
+         "section": "section at mid-strike"}
 # A stress is GPa for the run's slip in km: over the slip it is GPa/km, which
 # is MPa per metre.
 STRESS_UNIT = {"since": "MPa per metre of slip",
@@ -261,10 +262,11 @@ def stepped(out: Out, spec: dict, runs: pathlib.Path) -> dict:
     sense = lb.burgers(1.0, mp.get("rake", 180.0), run.meshes["arr__n_hat"],
                        run.meshes["arr__s_hat"])
 
-    def one(name, field, split, what):
-        v, tr = run.meshes[f"{name}__v"], run.meshes[f"{name}__t"]
+    def one(name, field, split, what, mesh=None, mask=None):
+        v, tr = part(run, mesh or name, mask)
         nodes, tri, A = W.node_sheet(v, tr, split)
-        at = np.stack([A @ f for f in field]) / slip
+        keep = slice(None) if mask is None else mask
+        at = np.stack([A @ f[keep] for f in field]) / slip
         return {"label": SHEET[name], "nodes": int(nodes.shape[0]),
                 "triangles": int(tri.shape[0]), "elements": int(tr.shape[0]),
                 "mesh": {"nodes": out.array(f"{key}.{name}.nodes",
@@ -274,8 +276,8 @@ def stepped(out: Out, spec: dict, runs: pathlib.Path) -> dict:
                 "fields": {what: encode_history(out, f"{key}.{name}.{what}",
                                                 at)}}
 
-    sheets = {n: one(n, hist[f"u:{n}"], faults, "u")
-              for n in ("top", "interface")}
+    sheets = {n: one(n, hist[f"u:{mesh}"], faults, "u", mesh, mask)
+              for n, (mesh, mask) in boundary_sheets(run).items()}
     sheets["fault_lower"] = one(
         "fault_lower", (hist["b:fault_lower"] @ sense)[..., None], (), "slip")
 
@@ -377,9 +379,35 @@ def _one(runs: pathlib.Path, tail: str, key: str) -> pathlib.Path:
     return hits[0]
 
 
+def boundary_sheets(run) -> dict:
+    """``{sheet: (mesh name, element mask or None)}``: the boundary sheets
+    of a model. The solve has ONE interface between plate and mantle, and
+    under a slab it wraps the slab; a reader wants the plate's flat base and
+    the slab apart, so they are two sheets cut from that one patch."""
+    gp = run.resolved["spec"]["model"]["geometry"]["params"]
+    out = {"top": ("top", None), "interface": ("interface", None)}
+    if gp.get("slab_depth", 0.0) > -gp["z_interface"]:
+        v, t = run.meshes["interface__v"], run.meshes["interface__t"]
+        flat = np.all(np.abs(v[t][:, :, 2] - gp["z_interface"])
+                      < 1.0e-6 * abs(gp["z_interface"]), axis=1)
+        out["interface"], out["slab"] = ("interface", flat), ("interface", ~flat)
+    return out
+
+
+def part(run, mesh: str, mask):
+    """``(vertices, triangles)`` of a mesh, or of the elements ``mask``
+    keeps, with the vertices no kept element uses dropped."""
+    v, t = run.meshes[f"{mesh}__v"], run.meshes[f"{mesh}__t"]
+    if mask is None:
+        return v, t
+    used = np.unique(t[mask])
+    return v[used], np.searchsorted(used, t[mask])
+
+
 def sheet(out: Out, key: str, name: str, run, s, stack, faults, periods,
-          slip: float) -> dict:
-    v, t = run.meshes[f"{name}__v"], run.meshes[f"{name}__t"]
+          slip: float, mesh: str = None, mask=None) -> dict:
+    mesh = mesh or name
+    v, t = part(run, mesh, mask)
     nodes, tri, A = W.node_sheet(v, t, faults)
     entry = {"label": SHEET[name], "nodes": int(nodes.shape[0]),
              "triangles": int(tri.shape[0]), "elements": int(t.shape[0]),
@@ -394,7 +422,8 @@ def sheet(out: Out, key: str, name: str, run, s, stack, faults, periods,
         entry["fields"]["slip"] = encode(out, f"{key}.{name}.slip", at, s,
                                          periods)
     else:
-        at = np.stack([A @ u for u in stack[f"u:{name}"]]) / slip
+        keep = slice(None) if mask is None else mask
+        at = np.stack([A @ u[keep] for u in stack[f"u:{mesh}"]]) / slip
         entry["fields"]["u"] = encode(out, f"{key}.{name}.u", at, s, periods)
     return entry
 
@@ -517,8 +546,9 @@ def model(out: Out, spec: dict, runs: pathlib.Path) -> dict:
     faults = [TriMesh(run.meshes[f"{n}__v"], run.meshes[f"{n}__t"])
               for n in ("fault", "fault_lower") if f"{n}__t" in run.meshes]
 
-    sheets = {n: sheet(out, key, n, run, s, stack, faults, periods, slip)
-              for n in ("top", "interface")}
+    sheets = {n: sheet(out, key, n, run, s, stack, faults, periods, slip,
+                       mesh, mask)
+              for n, (mesh, mask) in boundary_sheets(run).items()}
     creeping = "b:fault_lower" in stack
     if creeping:
         sheets["fault_lower"] = sheet(out, key, "fault_lower", run, s, stack,
