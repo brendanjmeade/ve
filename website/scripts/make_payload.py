@@ -16,6 +16,10 @@ mbem's gates check (``verify_volume`` [i]): the modes, the tables, the
 node averaging that must not cross a fault. This file only names the studies
 and writes the schema ``src/viz/payload.ts`` reads.
 
+A body with NO FASTEST RELAXATION (an Andrade substrate) is fitted in time
+with its tail (``mbem.laplace.Prony(tails=...)``): every table here is made
+with the tails the run's own rheologies have (``tails_of``), never without.
+
 A STEPPED run (``mbem.stepper``: a fault under a law that is not linear) has
 no Laplace state to weigh: it is already a history, every boundary unknown at
 every time. It goes out in the same form -- modes, and a table whose rows
@@ -32,7 +36,7 @@ import pathlib
 
 import numpy as np
 
-from mbem import TriMesh, figures as F, laplace, webexport as W
+from mbem import TriMesh, figures as F, laplace, rheology, webexport as W
 from mbem.cases import layered_box as lb
 from mbem.figures import plate as P
 
@@ -76,6 +80,16 @@ MODELS = (
               "Burgers material, whose transient element gives up half its "
               "shear modulus within a tenth of a Maxwell time before the "
               "steady flow takes the rest."},
+    {"key": "andrade", "label": "megathrust, Andrade substrate",
+     "study": "d5c3", "run": {"andrade_alpha": 0.3333},
+     "curves": (("model", "Andrade substrate", {"andrade_alpha": 0.3333}, None),
+                ("other", "Maxwell substrate", {"andrade_alpha": 0.0}, None)),
+     "reference": ("layered reference, Andrade", {"andrade_alpha": 0.3333}),
+     "blurb": "The first model once more, on an Andrade substrate: its "
+              "transient creep grows as the cube root of time, the law "
+              "creep follows in the laboratory, on top of the same steady "
+              "flow. Such a material has no fastest relaxation time, so it "
+              "starts to let go at once however early one looks."},
     {"key": "slab_afterslip",
      "label": "slab, Burgers mantle, afterslip on the slab's face",
      "study": "05b1", "run": {"creep_tau": 1.0},
@@ -163,9 +177,17 @@ class Out:
         return sorted(p.name for p in stale)
 
 
-def quantities(s, periods) -> dict:
+def tails_of(run) -> tuple:
+    """What the fit in time of a run is given beside its points: the power
+    laws its relaxing regions' spectra end in at short times, none for a
+    body whose every relaxation has a fastest time (``rheology.tails``)."""
+    return rheology.tails(
+        run.resolved["spec"]["laplace"]["rheology"].values())
+
+
+def quantities(s, periods, tails=()) -> dict:
     out = {}
-    for name, q in W.time_weights(s, periods).items():
+    for name, q in W.time_weights(s, periods, tails=tails).items():
         label, unit = QUANTITY[name.split(":")[0]]
         out[name] = {"axis": q["axis"], "at": num(q["at"], 6), "label": label,
                      "unit": unit, **({"period": q["period"]}
@@ -197,17 +219,16 @@ def limits(field: np.ndarray) -> dict:
 
 
 def encode(out: Out, name: str, stack: np.ndarray, s, periods,
-           unit: dict = None) -> dict:
+           unit: dict = None, tails=()) -> dict:
     """One field of one sheet: modes to a file, a table per quantity, and
     how far the decode is from the map it stands for."""
     modes, C = W.encode_modes(stack)
     entry = {"components": int(stack.shape[-1]), "modes": int(modes.shape[0]),
              **out.array(name, modes), "rows": {}, "range": {}, "error": {}}
+    weights = W.time_weights(s, periods, tails=tails)
     if unit:
-        entry["unit"] = {q: unit[q.split(":")[0]]
-                         for q in W.time_weights(s, periods)}
-    weights = W.time_weights(s, periods)
-    for q, tb in W.time_tables(s, C, periods).items():
+        entry["unit"] = {q: unit[q.split(":")[0]] for q in weights}
+    for q, tb in W.time_tables(s, C, periods, tails=tails).items():
         got = W.decode_modes(modes, tb["rows"])
         want = np.tensordot(weights[q]["w"], stack, axes=1)
         entry["rows"][q] = num(tb["rows"])
@@ -287,7 +308,7 @@ def stepped(out: Out, spec: dict, runs: pathlib.Path) -> dict:
     study = F.load_study(_one(runs, spec["linear"][0], key))
     lin = study.one(**spec["linear"][1])
     s, x_lin, u_lin = P.in_plane(lin)
-    w = W.time_weights(s)["total"]
+    w = W.time_weights(s, tails=tails_of(lin))["total"]
     if not np.allclose(w["at"], t, rtol=1e-9, atol=0.0):
         raise ValueError(f"{key}: the stepped run's times are not the "
                          f"linear run's")
@@ -406,6 +427,7 @@ def part(run, mesh: str, mask):
 
 def sheet(out: Out, key: str, name: str, run, s, stack, faults, periods,
           slip: float, mesh: str = None, mask=None) -> dict:
+    tails = tails_of(run)
     mesh = mesh or name
     v, t = part(run, mesh, mask)
     nodes, tri, A = W.node_sheet(v, t, faults)
@@ -420,11 +442,12 @@ def sheet(out: Out, key: str, name: str, run, s, stack, faults, periods,
         _s, _cen, _area, creep = P.creep_on(run)          # (n_states, n_elem)
         at = np.stack([A @ c for c in creep])[..., None]
         entry["fields"]["slip"] = encode(out, f"{key}.{name}.slip", at, s,
-                                         periods)
+                                         periods, tails=tails)
     else:
         keep = slice(None) if mask is None else mask
         at = np.stack([A @ u[keep] for u in stack[f"u:{mesh}"]]) / slip
-        entry["fields"]["u"] = encode(out, f"{key}.{name}.u", at, s, periods)
+        entry["fields"]["u"] = encode(out, f"{key}.{name}.u", at, s, periods,
+                                      tails=tails)
     return entry
 
 
@@ -481,15 +504,23 @@ def section(out: Out, key: str, run, s, vol: pathlib.Path, periods,
                                         tri.astype(np.uint32))},
         "fields": {
             "u": encode(out, f"{key}.section.u",
-                        np.stack(u)[:, keep] / slip, s, periods),
+                        np.stack(u)[:, keep] / slip, s, periods,
+                        tails=tails_of(run)),
             "sigma": encode(out, f"{key}.section.sigma",
                             np.stack(sig)[:, keep] / slip, s, periods,
-                            STRESS_UNIT)}}
+                            STRESS_UNIT, tails=tails_of(run))}}
 
 
 def profile(out: Out, spec: dict, study, s, periods) -> str:
     """The mid-strike profile: each curve's stack of states, whole, and the
-    weights that take a stack to each quantity of time."""
+    weights that take a stack to each quantity of time.
+
+    The weights are ONE set, the drawn model's, for every curve. A twin
+    whose body has a fastest relaxation is then read with a fit that carries
+    the model's tail: it costs that curve 2e-3 of its postseismic part at
+    the window's first time and 1e-4 after it (measured on the Maxwell
+    megathrust with an Andrade tail), under the fit's own error."""
+    tails = tails_of(study.one(**spec["run"]))
     curves, at_model = [], None
     for key, label, pick, coarse in spec["curves"]:
         run = study.one(**pick)
@@ -506,7 +537,7 @@ def profile(out: Out, spec: dict, study, s, periods) -> str:
     xf = xf[np.abs(xf) > 0.5]
     curves.append({"key": "reference", "label": label, "x": num(xf, 6),
                    "stack": num(P.in_plane_reference(ref_run, s, xf))})
-    weights = W.time_weights(s, periods)
+    weights = W.time_weights(s, periods, tails=tails)
     # how far each solved curve is from the reference, at its own points
     misfit = {}
     for c in curves[:-1]:
@@ -590,7 +621,7 @@ def model(out: Out, spec: dict, runs: pathlib.Path) -> dict:
         "box": {"lo": num(lo, 6), "hi": num(hi, 6)},
         "window": [float(f"{t0:.6g}"), float(f"{t1:.6g}")],
         "view_depth": VIEW_DEPTH,
-        "quantities": quantities(s, periods),
+        "quantities": quantities(s, periods, tails_of(run)),
         "sheets": sheets, "outlines": outlines, "creeping": creeping,
         "profile": profile(out, spec, study, s, periods)}
     out.json(f"{key}.json", entry)

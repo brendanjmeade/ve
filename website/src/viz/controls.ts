@@ -31,6 +31,11 @@ export function facts(m: Model): string[] {
       `A Burgers substrate: a transient with time ${fmt(sub.tau_K)} Maxwell ` +
       `times and a Kelvin spring ${fmt(sub.kelvin)} × the shear modulus, in ` +
       `series with the steady flow that sets the clock.`] : []),
+    ...(sub?.kind === "andrade" ? [
+      `An Andrade substrate: transient creep that grows as time to the ` +
+      `power ${fmt(sub.alpha, 2)}, equal to the elastic strain at ` +
+      `${fmt(sub.tau_A)} Maxwell times, on top of the steady flow that sets ` +
+      `the clock. It has no fastest relaxation time.`] : []),
     ...(n.slab_depth > n.plate && n.fault_depth > n.plate ? [
       `Below the plate the megathrust runs down the slab's upper face, ` +
       `where slab and mantle wedge slide past each other: slip on an ` +

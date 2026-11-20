@@ -57,6 +57,22 @@ python -m mbem run configs/plate_substrate.py \
     --set t_max=100 --set t_min=0.02 --set refine=2 --sweep tau_K=0.1,0
 ```
 
+An Andrade substrate against a Maxwell one, on the same mesh and the same
+window. `andrade_alpha` is the exponent of the transient and `tau_A`, one
+Maxwell time unless it is given, the time at which the transient strain
+equals the elastic one. Keep the window's first time at or below `tau_A`;
+a run that does not is warned of:
+
+```bash
+python -m mbem run configs/plate_substrate.py \
+    --set dip=20 --set rake=90 --set depth=45 \
+    --set rho_plate=2700 --set rho_substrate=3300 \
+    --set edge_near=10 --set near_field_radius=200 \
+    --set fault_half_len=150 --set half_x=400 --set sides=window \
+    --set t_max=100 --set t_min=0.02 --set refine=2 \
+    --sweep andrade_alpha=0.3333,0
+```
+
 A slab, a Burgers mantle, and afterslip on the slab's upper face, where the
 megathrust runs below the plate (`depth` greater than the plate under a
 slab). The face is solved, so the solver is dense and the plate's faces are
@@ -92,9 +108,9 @@ states and took 21 minutes with the machine to itself. The others are
 smaller.
 
 <div class="note">
-The last two (slip on a slab's face, <code>route=step</code>) are in mbem
-pull request #7 at the time of writing. Until it is merged they are on the
-branch <code>stepper</code>, not on <code>main</code>.
+The Andrade substrate is in mbem pull request #14 at the time of writing.
+Until it is merged it is on the branch <code>andrade</code>, not on
+<code>main</code>.
 </div>
 
 ## From a run to a time
@@ -109,9 +125,13 @@ import numpy as np
 from mbem import laplace
 
 s, stack = laplace.run_stack(run_dir)             # elastic state first
-u = np.tensordot(laplace.Prony(s).weights([1.0, 10.0, 100.0]),
+u = np.tensordot(laplace.run_fit(run_dir).weights([1.0, 10.0, 100.0]),
                  stack["u:top"], axes=1)          # (3 times, elements, 3)
 ```
+
+`run_fit` is the fit of that run: its sample points, and for an Andrade
+substrate the one thing the fit is told about the material
+([Theory](../theory/#an-andrade-material)).
 
 `rate_weights` gives the velocity, and `locked_rate_weights(t, T)` the
 velocity of the fault locked between earthquakes that repeat every `T`.
@@ -143,7 +163,7 @@ values everywhere.
 python website/scripts/make_payload.py --runs ~/mbem/runs
 ```
 
-reads the five studies, their sections and the one stepped run, and writes
+reads the six studies, their sections and the one stepped run, and writes
 `website/public/data/`, fetched a model and a field at a time. For each surface or section it writes
 a mesh and, for each field on it,
 
@@ -175,8 +195,10 @@ section: none of those is made for a stepped run.
 The models are held to references that share nothing with the boundary
 elements, in gates that run with the rest of mbem's:
 
-- `verify_viscoelastic` (168 checks): a dislocation and an Eshelby inclusion
-  in Maxwell and Burgers bodies against closed forms; the layered reference
+- `verify_viscoelastic` (205 checks): a dislocation in Maxwell, Burgers and
+  Andrade bodies and an Eshelby inclusion in a relaxing host against closed
+  forms; the fit's one term for an Andrade body against the contour, and
+  where it stops holding; the layered reference
   in three dimensions against three independent solutions; the megathrust in
   a window against it; a creeping penny crack against an exact solution.
 - `verify_volume`: the modes and tables this page uses reproduce the Python

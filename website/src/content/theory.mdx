@@ -71,6 +71,11 @@ $\mu_K$ beside a dashpot $\eta_K$. It relaxes twice: by a transient that is
 over in a time of order $\tau_K=\eta_K/\mu_K$, then steadily. It has [a
 section of its own](#a-burgers-material) below.
 
+**Andrade.** A spring, a dashpot, and between them a transient that follows
+a power of time and has no time of its own: under a held stress the strain
+grows as $t^{\alpha}$, $0<\alpha<1$, before the steady flow overtakes it.
+It has [a section](#an-andrade-material) too.
+
 A rheology is stated in relaxation *times* and *ratios* of moduli, never in
 viscosities: a viscosity only ever appears as $\eta/\mu$. So time has no unit
 of its own here. Everything on this site is in Maxwell times of the
@@ -96,6 +101,7 @@ That is Hooke's law, with an *operational* shear modulus that depends on $s$:
 |---|---|---|---|
 | Maxwell | $\mu\,\dfrac{s}{s+1/\tau}$ | $\mu$ | $0$ |
 | Burgers | $\dfrac1{\tilde\mu}=\dfrac1\mu+\dfrac1{\mu\,\tau_M\,s}+\dfrac1{\mu_K\,(1+\tau_K s)}$ | $\mu$ | $0$ |
+| Andrade | $\dfrac1{\tilde\mu}=\dfrac1\mu\left[1+\dfrac{\Gamma(1+\alpha)}{(\tau_A s)^{\alpha}}+\dfrac1{\tau_M\,s}\right]$ | $\mu$ | $0$ |
 
 Equilibrium, the definition of strain and the conditions on interfaces and
 faults are linear and have no time in them, so they transform unchanged. The
@@ -526,6 +532,124 @@ Its Maxwell twin on the same mesh gives 2.5 to 2.8&nbsp;% and 4.3&nbsp;%: the
 transient costs the method nothing. The ratios in the table are the model's
 and the reference's alike, to 0.2&nbsp;%.
 
+## An Andrade material
+
+A Burgers material has one transient, with one time, and when that time has
+passed the transient is over. Rock creeping in the laboratory does something
+else. After a step of stress its strain grows as a power of time, with an
+exponent near a third, and keeps growing, ever more slowly, until the
+steady flow overtakes it. That is Andrade's law (Andrade, 1910). Under a
+step of stress the creep is
+
+$$
+J(t)=\frac1\mu\left[\,1+\left(\frac{t}{\tau_A}\right)^{\alpha}+\frac{t}{\tau_M}\right],
+\qquad 0<\alpha<1:
+$$
+
+an instant strain, a transient that slows but never stops, and a steady
+flow.
+
+**Two times and an exponent.** $\tau_M=\eta/\mu$ is the steady time, as for
+the others. $\tau_A$ is the time at which the transient strain equals the
+elastic one, and $\alpha$ is the exponent. The law is more often written
+$J=1/\mu+\beta\,t^{\alpha}+t/\eta$; then $\beta=1/(\mu\,\tau_A^{\alpha})$.
+The transform of $t^{\alpha}$ is $\Gamma(1+\alpha)/s^{1+\alpha}$, so
+
+$$
+\frac{\tilde\mu(s)}{\mu}
+=\left[\,1+\frac{\Gamma(1+\alpha)}{(\tau_A\,s)^{\alpha}}+\frac1{\tau_M\,s}\right]^{-1}.
+$$
+
+At $\alpha=1$ it is a Maxwell material whose rate is the two summed. The
+model on this site has $\alpha=1/3$ and $\tau_A=\tau_M$.
+
+**It has no fastest relaxation.** A Burgers modulus is two exponentials.
+This one is not a sum of exponentials at all: $s^{-\alpha}$ has a branch cut
+where the others have poles, and the modulus is a continuous spectrum of
+relaxation times with no shortest one. Held at a fixed strain it starts as
+
+$$
+\frac{\mu(t)}{\mu}=1-\left(\frac{t}{\tau_A}\right)^{\alpha}+\dots,
+$$
+
+whose slope is infinite at $t=0$. However early one looks, part of the
+stress has already gone: a tenth of it by a thousandth of $\tau_A$ when
+$\alpha=1/3$. As exponentials, the spectrum runs on to ever faster rates
+with an amplitude that falls as the rate to the power $-\alpha$.
+
+**What it asks of the method.** Of the solver, nothing: a state is an
+elastic solve at $\tilde\mu(s)$, and a fractional power of $s$ is only a
+number. Both ends are the Maxwell model's own. Of the window it asks that
+the first time be no later than $\tau_A$, for the reason below.
+
+Of the fit it asks something, and this is the one material here for which
+[Back to time](#back-to-time) had to change. That fit is a constant and a
+set of exponentials whose fastest time is the window's short end, with the
+earthquake reproduced exactly. For an Andrade body a fifth to two fifths of
+the modulus has relaxed *faster* than the fastest exponential. The fit has
+no term for it, so the exponentials nearest the short end take it up in the
+wrong shape, and the error is not confined to early times. It runs through
+the whole window. More sample points a decade barely reduce it.
+
+So the fit is told one thing about the material, its exponent. In place of
+the fastest exponential it is given one term that stands for every
+exponential from there on at once, on the same spacing in rate, their
+amplitudes tied together by the power law:
+
+$$
+\sum_{k\ge0}r^{-\alpha k}\,\frac{s}{s+\beta_k},\qquad \beta_k=\beta_0\,r^{k},
+$$
+
+with $\beta_0$ the rate of the exponential it replaces and $r$ the ratio of
+the sample points. It has one unknown amplitude, like the term it replaces,
+so the number of solves is the same and the earthquake is still exact.
+Measured on $\mu(t)$, $g(t)$ and their product against the contour, the
+worst of the three, from $0.1$ to $100\,\tau_M$ at three points a decade:
+
+| $\alpha$, $\tau_A/\tau_M$ | the fit as it was | with the one term |
+|---|---|---|
+| 1/3, 1 | 7.7&nbsp;% | 0.11&nbsp;% |
+| 1/3, 0.1 | 21&nbsp;% | 0.65&nbsp;% |
+| 0.2, 1 | 17&nbsp;% | 0.34&nbsp;% |
+| 0.5, 1 | 2.6&nbsp;% | 0.012&nbsp;% |
+
+A Maxwell and a Burgers body measured the same way are at 0.15 and
+0.07&nbsp;%.
+
+The term is the spectrum's end only to leading order, and only at times
+shorter than $\tau_A$, where the transient is still smaller than the
+elastic strain. A window that starts later than $\tau_A$ is fitted with a
+tail of the wrong shape: in the first row the error in a stress rises to
+1.6&nbsp;% with the window starting at $3\,\tau_A$, 3.5&nbsp;% at ten and
+14&nbsp;% at a hundred, and a tenth of that or less in a displacement. The
+solver warns of such a window. It does not refuse it.
+
+**What it does to a megathrust.** The megathrust of this site once more, on
+its finer mesh, over an Andrade substrate and over a Maxwell one, each
+solved at the same seventeen states from $0.02\,\tau_M$. At the earthquake
+the two are one solve. After it, the displacement since the earthquake at
+mid-strike, Andrade over Maxwell (rms over the profile, both components):
+
+| $t/\tau_M$ | 0.03 | 0.1 | 0.3 | 1 | 3 | 10 | 30 | 100 |
+|---|---|---|---|---|---|---|---|---|
+| Andrade over Maxwell | 10.4 | 5.0 | 2.75 | 1.63 | 1.19 | 1.010 | 0.994 | 0.998 |
+
+At a tenth of a Maxwell time the ground over the Andrade substrate has
+moved five times as far, as far as the Maxwell model has by $0.54$.
+The Burgers model's lead is gone at $6\,\tau_M$. This one lasts about
+twice as long: it is still 19&nbsp;% at three Maxwell times, and the
+Maxwell model does not catch up until $13\,\tau_M$.
+From there the two differ by under one per cent. A fault locked between
+earthquakes every $20\,\tau_M$ moves differently by 7&nbsp;% a
+twentieth of the way through its cycle, 12&nbsp;% a quarter of the way,
+and 1.6&nbsp;% three quarters of the way.
+
+Against the layered reference with the same Andrade substrate, the model's
+postseismic displacement is within 2.5 to 2.8&nbsp;% from $0.03$ to
+$10\,\tau_M$ and within 4.3&nbsp;% at a hundred, which is what its
+Maxwell twin on the same mesh gives. The ratios in the table are the model's
+and the reference's alike, to 0.3&nbsp;%.
+
 ## Earthquakes that repeat
 
 Let the same step of slip recur every $T$, for ever. At a time $t$ after the
@@ -917,6 +1041,7 @@ Each piece above is tested against something that shares nothing with it.
 | torsion of a two-layer cylinder | an interface, a free wall, a fixed base | 5&nbsp;% on 847 elements, flat in $s$ |
 | a penny crack under a sustained stress drop | a solved fault that creeps for ever | 0.5&nbsp;% in moment |
 | a strike-slip fault in a plate over a Burgers substrate | the transient, and a window that reaches below it | within 3&nbsp;% in the largest box, inside the transient and after it |
+| the modulus of an Andrade body, and a dislocation and a creeping crack in one | a spectrum with no fastest time, and the fit's one term for it | 0.1&nbsp;% in the modulus; the dislocation to $7\times10^{-5}$; the crack its own 0.6&nbsp;% |
 | layered shells on a rigid core, radial buoyancy | gravity, per $s$ and in time | within 2.6&nbsp;% |
 | the layered reference against half-space closed forms | the reference itself | $7\times10^{-5}$ on the walls of a box |
 | a megathrust through the plate, window and two meshes | everything at once | 1.6&nbsp;% in time, 0.5&nbsp;% through the cycle |
@@ -1008,6 +1133,9 @@ it costs the square of the boundary's unknowns where the reduction costs
 the square of the fault's.
 
 ## References
+
+Andrade, E. N. da C. (1910), On the viscous flow in metals, and allied
+phenomena, *Proc. R. Soc. Lond. A*, 84, 1.
 
 Barbot, S., and Y. Fialko (2010), Fourier-domain Green's function for an
 elastic semi-infinite solid under gravity, with applications to earthquake
